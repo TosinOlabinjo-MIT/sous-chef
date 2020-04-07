@@ -8,8 +8,25 @@ Last edited: 4/7/2020
 """
 
 
-class food(object):
-    '''parent class that defines food and methods to check it'''
+# class food(object):
+#     '''parent class that defines food and methods to check it'''
+#     def __init__(self):
+#         self.cook_time = None
+#         self.start_time = None
+#         self.done_state = None
+#         pass
+
+#     def update_state():
+#         '''method that updates doneness state of the food based on time passed'''
+#         pass
+
+#     def show_outline(current_state):
+#         '''method to color outline of food based on how it done it is'''
+#         pass
+
+
+class burger(object):
+    '''class that defines burger patty and methods to check it'''
     def __init__(self):
         self.cook_time = None
         self.start_time = None
@@ -23,9 +40,6 @@ class food(object):
     def show_outline(current_state):
         '''method to color outline of food based on how it done it is'''
         pass
-
-    
-
 
 
 class sous_chef(object):
