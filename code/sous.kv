@@ -1,0 +1,31 @@
+#:kivy 1.0.9
+
+<StartWind>: 
+    BoxLayout:
+        orientation: 'vertical'
+        size: root.width * 1.0, root.height * 1.0
+        x: root.x
+        top: self.height and root.y + root.height * 1.0
+        Label:
+            text: 'Sous Chef - title graphic'
+            size_hint_y: 0.75
+        Button:
+            text: 'Start'
+            size_hint_y: 0.25
+
+     
+
+
+<CookWind>:    
+    BoxLayout:
+        orientation: 'vertical'
+        size: root.width * 1.0, root.height * 1.0
+        x: root.x
+        top: self.height and root.y + root.height * 1.0
+        padding: 10
+        Label:
+            text: 'Camera feed here'
+            size_hint_y: 0.75
+        Label:
+            text: 'Options will go here'
+            size_hint_y: 0.25
