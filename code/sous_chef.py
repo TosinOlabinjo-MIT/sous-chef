@@ -21,13 +21,18 @@ from kivy.uix.image import Image
 from kivy.clock import Clock
 from kivy.graphics.texture import Texture
 
+from gtts import gTTS
+from playsound import playsound as ps
+import os
+
 # credit:
 #from pyleap.leap import getLeapInfo, getLeapFrame
 GRID_W = 5
 GRID_H = 5
-SHIFT_LIMIT = 10
+SHIFT_LIMIT = 30
 
 BURGER_LINE = 2
+THICK_LINE = 4
 
 BURGER_STATES = ["new" , "flip" , "done" , "overdone"]
 
@@ -35,9 +40,12 @@ BURGER_COLOR = {
     "new":(255, 155, 0),
     "flip":(0, 255, 255),
     "done":(77, 255, 77),
-    "overdone":(0 , 0, 255)
+    "overdone":(0 , 0, 255),
+    "flipped":(180, 175, 100)
 
 }
+#TODO - update colors and states - flip state and color? 
+#OR two round of states - before and after flip?
 
 #turn into dict for rare, medium, and well_done
 #check actual times after debugging
@@ -47,6 +55,8 @@ DONE_TIMES = {
     "done" : 60,
     "overdone" : 100
 }
+REM_TIME = 30
+FLIP_MIN = 5
 
 MIN_DIST = 80
 
@@ -167,7 +177,7 @@ def do_cv():
     cv2.destroyAllWindows()
 
 def do_cv_circle(chef):
-    cap = cv2.VideoCapture(0)
+    cap = cv2.VideoCapture(1)
     
 
     while(True):
@@ -186,6 +196,8 @@ def do_cv_circle(chef):
         detected_circles = cv2.HoughCircles(gray_blurred,  
                         cv2.HOUGH_GRADIENT, 1, MIN_DIST, param1 = 50, 
                     param2 = 30, minRadius = 40, maxRadius = 80) 
+
+        missing_burgers = chef.all_burgers.copy()
         
         # Draw circles that are detected. 
         if detected_circles is not None: 
@@ -198,18 +210,22 @@ def do_cv_circle(chef):
             for pt in detected_circles[0, :]: 
                 a, b, r = pt[0], pt[1], pt[2] 
                 
-                chef.set_frame(frame.shape[1] , frame.shape[0]) #change this to a cook-cv class characteristic that gets passed in
+                chef.set_frame((frame.shape[1] , frame.shape[0])) #change this to a cook-cv class characteristic that gets passed in
                 patty = chef.check_burgers(a,b,r)
-                print(patty.name , patty.cur_state)
+                if patty.name in missing_burgers.keys():
+                    del(missing_burgers[patty.name])
+                print(patty.name , patty.cur_state, time.time())
+                #if(patty.flipped): print ("is_flipped")
         
                 cv2.circle(frame, patty.coords, patty.rad, patty.color, patty.line_weight) 
         
         #check through chef's burgers to see if any burgers in his list weren't detected
         #maybe handling overall missing burgers in other main method
-         
+        chef.check_missing(missing_burgers) 
 
         #flip images
         frame = cv2.flip(frame , 1)
+        frame = cv2.flip(frame , 0)
         #resize image
         #cv2.namedWindow("main", cv2.WINDOW_NORMAL)
         scale_ratio = 1.75 # percent of original size
@@ -231,6 +247,29 @@ def do_cv_circle(chef):
     return
 
 
+class speaker(object):
+    def __init__(self):
+        self.state_msgs = {
+            "new" : "",
+            "flip": "This burger is ready to be flipped",
+            "done": "This burger is ready",
+            "overdone" : "This burger is starting to overcook"
+        }
+        
+
+    def play_state(self, b_state):
+        #create audio file if it doensn't exist
+        a_file = os.getcwd() + "/audio/states/"+b_state+".wav"
+        if not os.path.isfile(a_file):
+            speech = gTTS(text = self.state_msgs[b_state] , lang = 'en', slow = False)
+            speech.save(a_file)
+        ps(self.state_msgs[b_state])
+        return
+
+    #TODO - need functions for done time answer & processing input speech
+
+
+
 
 class burger(object):
     '''class that defines burger patty and methods to check it'''
@@ -250,12 +289,29 @@ class burger(object):
 
         self.do_update = True
 
+        self.time_gone = 0
+        self.time_seen = 0
+        self.flipped = False
+
+    def check_gone(self, chef):
+        gone_delt = time.time() - self.time_seen
+        self.time_gone = gone_delt
+        
+        if gone_delt > REM_TIME:
+            chef.remove_burger(self)
+            print("removed", self.name)
+        
+        return
+
 
     def check_done(self,x,y):
         '''method that updates doneness state of the food based on time passed'''
         old_state = self.cur_state
         time_delt = time.time() - self.start_time
-        #print(time_delt)
+        self.time_seen = time.time()
+
+        #TODO - have to tracks, before and after flip: will look at different times and colors
+        
         
         #update location if significantly different
         if abs(self.coords[0] - x) > SHIFT_LIMIT and abs(self.coords[1] - y > SHIFT_LIMIT):
@@ -266,15 +322,31 @@ class burger(object):
             if time_delt >= DONE_TIMES[state]:
                 self.cur_state = state
 
+
+        #check if flipping #TODO - replace with color ? test!
+        #TODO - change state track based on flip or not, two lists, two sets of colors?
+        if self.cur_state == "flip" and self.time_gone > FLIP_MIN and self.flipped == False:
+            #for now, pretend being flipped is "new" on the other side
+            self.flipped = True
+            self.cur_state = "new"
+            self.color = BURGER_COLOR["flipped"]
+            self.start_time = time.time()
+            print("flipped", self.name)
+
+            return
+
+        #if it's already been flipped, once it gets back to that state it should be done
+        if self.cur_state == "flip" and self.flipped:
+            self.cur_state = "done"
+
         #update outline color
         if self.cur_state != old_state:
             self.color = BURGER_COLOR[self.cur_state]
             #self.do_update = True
 
+        #TODO - add in audio here, change to elifs so flipping doesn't break
+
         return
-
-
-
 
 
 
@@ -287,6 +359,7 @@ class sous_chef(object):
         self.running = True
         self.cur_window = None #later start with start, for now go straight to cooking 
         self.burgers = [[None]*GRID_W]*GRID_H
+        self.all_burgers = {}
         #self.camera_feed
         self.frame_dims = (-1,-1) #w,h
 
@@ -309,6 +382,7 @@ class sous_chef(object):
 
         if self.burgers[y_b][x_b] == None:
             self.burgers[y_b][x_b] = new_patty
+            self.all_burgers[new_patty.name] = (x_b, y_b)
             print("brand new")
             return new_patty
         else:
@@ -316,8 +390,17 @@ class sous_chef(object):
             this_patty.check_done(x,y)
             return this_patty
 
-        
+    def check_missing(self, missing_burgs):
+        for burg in missing_burgs.keys():
+            x,y = missing_burgs[burg]
+            self.burgers[y][x].check_gone(self)
 
+    def remove_burger(self, burger):
+        b_loc = self.all_burgers[burger.name]
+        del(self.all_burgers[burger.name])
+        self.burgers[b_loc[1]][b_loc[0]] = None
+        return
+              
 
     def show_start(self):
         pass
