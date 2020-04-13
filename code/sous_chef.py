@@ -22,7 +22,11 @@ from kivy.clock import Clock
 from kivy.graphics.texture import Texture
 
 from gtts import gTTS
+import winsound
+import sounddevice as sd
+import soundfile as sf
 from playsound import playsound as ps
+from pydub import AudioSegment
 import os
 
 # credit:
@@ -52,9 +56,9 @@ BURGER_COLOR = {
 #check actual times after debugging
 DONE_TIMES = {
     "new" : 0,
-    "flip" : 30 , 
-    "done" : 60,
-    "overdone" : 100
+    "flip" : 15 , 
+    "done" : 30,
+    "overdone" : 60
 }
 REM_TIME = 30
 FLIP_MIN = 5
@@ -253,25 +257,36 @@ class speaker(object):
         self.state_msgs = {
             "new" : "",
             "flip": "This burger is ready to be flipped",
-            "done": "This burger is ready",
+            "done": "This burger is done",
             "overdone" : "This burger is starting to overcook"
         }
         
 
     def play_state(self, b_state):
         #check audio folder
-        a_folder = os.getcwd() + "audio\\states\\"
+        a_folder = os.getcwd() + "\\audio\\states\\"
+        #a_folder = "C:/sous-chef/code/audio/states/"
         if not os.path.exists(a_folder):
             os.makedirs(a_folder)
 
         #create audio file if it doensn't exist
-        a_file = a_folder+b_state+".wav"
+        a_file = a_folder+b_state+".mp3"
+        a_wav = a_folder+b_state+".wav"
         if not os.path.isfile(a_file):
             speech = gTTS(text = self.state_msgs[b_state] , lang = 'en', slow = False)
             speech.save(a_file)
+            sound = AudioSegment.from_mp3(a_file)
+            sound.export(a_wav, format="wav")
 
-        #play audio    
-        ps(self.state_msgs[b_state])
+        #play audio  
+        if b_state == "overdone":
+            winsound.Beep(400,500)  
+        #os.system(a_wav)
+        #ps(a_wav)
+        #winsound.PlaySound(a_wav, winsound.SND_FILENAME)
+        data, fs = sf.read(a_wav, dtype='float32')  
+        sd.play(data, fs)
+        #status = sd.wait()  # Wait until file is done playing
         return
 
     #TODO - need functions for done time answer & processing input speech
@@ -297,10 +312,10 @@ class burger(object):
 
         self.do_update = True
 
-        self.time_gone = 0.0
-        self.time_seen = 0.0
+        self.time_gone = time.time()
+        self.time_seen = time.time()
         self.flipped = False
-        self.time_thick = 0.0
+        self.time_thick = time.time()
 
     def check_gone(self, chef):
         gone_delt = time.time() - self.time_seen
