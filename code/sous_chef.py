@@ -33,6 +33,7 @@ SHIFT_LIMIT = 30
 
 BURGER_LINE = 2
 THICK_LINE = 4
+THICK_TIME = 2
 
 BURGER_STATES = ["new" , "flip" , "done" , "overdone"]
 
@@ -258,11 +259,18 @@ class speaker(object):
         
 
     def play_state(self, b_state):
+        #check audio folder
+        a_folder = os.getcwd() + "audio\\states\\"
+        if not os.path.exists(a_folder):
+            os.makedirs(a_folder)
+
         #create audio file if it doensn't exist
-        a_file = os.getcwd() + "/audio/states/"+b_state+".wav"
+        a_file = a_folder+b_state+".wav"
         if not os.path.isfile(a_file):
             speech = gTTS(text = self.state_msgs[b_state] , lang = 'en', slow = False)
             speech.save(a_file)
+
+        #play audio    
         ps(self.state_msgs[b_state])
         return
 
@@ -289,9 +297,10 @@ class burger(object):
 
         self.do_update = True
 
-        self.time_gone = 0
-        self.time_seen = 0
+        self.time_gone = 0.0
+        self.time_seen = 0.0
         self.flipped = False
+        self.time_thick = 0.0
 
     def check_gone(self, chef):
         gone_delt = time.time() - self.time_seen
@@ -304,7 +313,7 @@ class burger(object):
         return
 
 
-    def check_done(self,x,y):
+    def check_done(self,x,y, speaker):
         '''method that updates doneness state of the food based on time passed'''
         old_state = self.cur_state
         time_delt = time.time() - self.start_time
@@ -316,6 +325,10 @@ class burger(object):
         #update location if significantly different
         if abs(self.coords[0] - x) > SHIFT_LIMIT and abs(self.coords[1] - y > SHIFT_LIMIT):
             self.coords = (x,y)
+
+        #update line thickness if used for emphasis
+        if self.line_weight == THICK_LINE and time.time() - self.time_thick > THICK_TIME:
+            self.line_weight = BURGER_LINE
 
         #check the sone state
         for state in BURGER_STATES:
@@ -342,6 +355,10 @@ class burger(object):
         #update outline color
         if self.cur_state != old_state:
             self.color = BURGER_COLOR[self.cur_state]
+            if self.cur_state != "new": 
+                self.time_thick = time.time()
+                self.line_weight = THICK_LINE
+                speaker.play_state(self.cur_state)
             #self.do_update = True
 
         #TODO - add in audio here, change to elifs so flipping doesn't break
@@ -362,6 +379,7 @@ class sous_chef(object):
         self.all_burgers = {}
         #self.camera_feed
         self.frame_dims = (-1,-1) #w,h
+        self.speak = speaker()
 
     
     def set_frame(self, coords):
@@ -387,7 +405,7 @@ class sous_chef(object):
             return new_patty
         else:
             this_patty = self.burgers[y_b][x_b]
-            this_patty.check_done(x,y)
+            this_patty.check_done(x,y, self.speak)
             return this_patty
 
     def check_missing(self, missing_burgs):
