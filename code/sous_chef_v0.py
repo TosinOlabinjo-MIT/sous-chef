@@ -37,7 +37,7 @@ SHIFT_LIMIT = 30
 
 BURGER_LINE = 2
 THICK_LINE = 4
-THICK_TIME = 5
+THICK_TIME = 2
 
 BURGER_STATES = ["new" , "flip" , "done" , "overdone"]
 
@@ -56,18 +56,12 @@ BURGER_COLOR = {
 #check actual times after debugging
 DONE_TIMES = {
     "new" : 0,
-    "flip" : 30 , 
-    "done" : 60,
-    "overdone" : 90
-}
-DONE_TIMES_2 = {
-    "new" : 0,
-    "flip" : 30 , 
+    "flip" : 15 , 
     "done" : 30,
     "overdone" : 60
 }
 REM_TIME = 30
-FLIP_MIN = 2
+FLIP_MIN = 5
 
 MIN_DIST = 80
 
@@ -78,23 +72,123 @@ class StartWind(Widget):
     #     print("idk")
 
 
+class KivyCV(Image):
+    def __init__(self, capture, fps, **kwargs):
+        Image.__init__(self, **kwargs)
+        self.capture = capture
+        Clock.schedule_interval(self.update, 1.0 / fps)
+
+    def update(self, dt):
+        ret, frame = self.capture.read()
+        if ret:
+            gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+            faceCascade = cv2.CascadeClassifier("lbpcascade_frontalface.xml")
+            faces = faceCascade.detectMultiScale(
+                gray,
+                scaleFactor=1.1,
+                minNeighbors=5,
+                minSize=(30, 30),
+                flags = cv2.CASCADE_SCALE_IMAGE
+            )
+
+            for (x, y, w, h) in faces:
+                cv2.rectangle(frame, (x, y), (x+w, y+h), (0, 255, 0), 2)
+
+            buf = cv2.flip(frame, 0).tostring()
+            image_texture = Texture.create(
+                size=(frame.shape[1], frame.shape[0]), colorfmt='bgr')
+            image_texture.blit_buffer(buf, colorfmt='bgr', bufferfmt='ubyte')
+            # display image from the texture
+            self.texture = image_texture
+
+
+class CookWind(Widget):
+    def build(self):
+        # print("built cookwind")
+        # self.img1=Image()
+        # print("making layout")
+        # layout = BoxLayout()
+        # print("affing cv img")
+        # layout.add_widget(self.img1)
+
+        # print("started capture")
+        # #opencv2 stuffs
+        # self.capture = cv2.VideoCapture(0)
+        
+        # print("first frame")
+        # ret, frame = self.capture.read()
+        # # display image from cam in opencv window
+        # cv2.imshow("CV2 Image", frame)
+
+        # cv2.namedWindow("CV2 Image")
+        # Clock.schedule_interval(self.update, 1.0/33.0)
+        # return layou
+        print("startcook")
+        self.capture = cv2.VideoCapture(0)
+        my_camera = KivyCV(capture=self.capture, fps=60)
+        return my_camera
+    
+    def on_stop(self):
+        self.capture.release()
+
+    # def update(self, dt):
+    #     print("called update")
+    #     #get frame from camera
+    #     ret, frame = self.capture.read()
+        
+    #     #---perform operations on image here
+
+    #     #-----
+
+    #     # display image from cam in opencv window
+    #     cv2.imshow("CV2 Image", frame)
+
+    #     # convert it to texture
+    #     buf1 = cv2.flip(frame, 0)
+    #     buf = buf1.tostring()
+    #     texture1 = Texture.create(size=(frame.shape[1], frame.shape[0]), colorfmt='bgr') 
+    #     #if working on RASPBERRY PI, use colorfmt='rgba' here instead, but stick with "bgr" in blit_buffer. 
+    #     texture1.blit_buffer(buf, colorfmt='bgr', bufferfmt='ubyte')
+    #     # display image from the texture
+    #     self.img1.texture = texture1
+        
+
 class SousApp(App):
     def build(self):
-        cur_window = StartWind()
+        #cur_window = StartWind()
+        cur_window = CookWind()
         #print("started sous")
         #return CookWind()
         return cur_window
 
 
+def do_cv():
+    cap = cv2.VideoCapture(0)
 
-class cv_cooktop(object):
-    def __init__(self, cam = 1):
-        self.cap = cv2.VideoCapture(cam)
-        
-    def get_circles(self):
-         # Capture frame-by-frame
-        ret, frame = self.cap.read()
-        
+    while(True):
+        # Capture frame-by-frame
+        ret, frame = cap.read()
+
+        # Our operations on the frame come here
+        gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+
+        # Display the resulting frame
+        cv2.imshow('frame',gray)
+        if cv2.waitKey(1) & 0xFF == ord('q'):
+            break
+
+    # When everything done, release the capture
+    cap.release()
+    cv2.destroyAllWindows()
+
+def do_cv_circle(chef):
+    cap = cv2.VideoCapture(0)
+    
+
+    while(True):
+        # Capture frame-by-frame
+        ret, frame = cap.read()
+
         # Our operations on the frame come here
         gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
         # Convert to grayscale. 
@@ -108,33 +202,32 @@ class cv_cooktop(object):
                         cv2.HOUGH_GRADIENT, 1, MIN_DIST, param1 = 50, 
                     param2 = 30, minRadius = 40, maxRadius = 80) 
 
-        if detected_circles is None: 
-            return ([], frame)
-                
-        # Convert the circle parameters a, b and r to integers. 
-        detected_circles = np.uint16(np.around(detected_circles))
-
-        return (detected_circles, frame)
-        
-        
-    def circ_to_burg(self, chef, detected_circles , frame):
         missing_burgers = chef.all_burgers.copy()
+        
+        # Draw circles that are detected. 
+        if detected_circles is not None: 
+            #this is where i would run the burgers function and it will output the actual outlines to draw
+        
+            # Convert the circle parameters a, b and r to integers. 
+            detected_circles = np.uint16(np.around(detected_circles)) 
 
-        for pt in detected_circles[0, :]: 
-            a, b, r = pt[0], pt[1], pt[2] 
-            
-            chef.set_frame((frame.shape[1] , frame.shape[0])) #change this to a cook-cv class characteristic that gets passed in
-            patty = chef.check_burgers(a,b,r)
-            if patty.name in missing_burgers.keys():
-                del(missing_burgers[patty.name])
-            print(patty.name , patty.cur_state, time.time())
-            #if(patty.flipped): print ("is_flipped")
-    
-            cv2.circle(frame, patty.coords, patty.rad, patty.color, patty.line_weight) 
-    
-        return (frame , missing_burgers)
+        
+            for pt in detected_circles[0, :]: 
+                a, b, r = pt[0], pt[1], pt[2] 
+                
+                chef.set_frame((frame.shape[1] , frame.shape[0])) #change this to a cook-cv class characteristic that gets passed in
+                patty = chef.check_burgers(a,b,r)
+                if patty.name in missing_burgers.keys():
+                    del(missing_burgers[patty.name])
+                print(patty.name , patty.cur_state, time.time())
+                #if(patty.flipped): print ("is_flipped")
+        
+                cv2.circle(frame, patty.coords, patty.rad, patty.color, patty.line_weight) 
+        
+        #check through chef's burgers to see if any burgers in his list weren't detected
+        #maybe handling overall missing burgers in other main method
+        chef.check_missing(missing_burgers) 
 
-    def show_frame(self, frame):
         #flip images
         frame = cv2.flip(frame , 1)
         frame = cv2.flip(frame , 0)
@@ -146,16 +239,17 @@ class cv_cooktop(object):
         dim = (width, height)
         # resize image
         resized = cv2.resize(frame, dim, interpolation = cv2.INTER_AREA)
-
-        #apply any other transofrmations on the frame
-        #frame = resized
-
+        
         # Display the resulting frame
         cv2.imshow("main", resized)
         #cv2.imshow('blurred img' , gray_blurred)
-        # if cv2.waitKey(1) & 0xFF == ord('q'):
-        #     break
-        return resized
+        if cv2.waitKey(1) & 0xFF == ord('q'):
+            break
+
+    # When everything done, release the capture
+    cap.release()
+    cv2.destroyAllWindows()
+    return
 
 
 class speaker(object):
@@ -216,16 +310,16 @@ class burger(object):
         self.color = BURGER_COLOR[self.cur_state]
         self.line_weight = BURGER_LINE
 
-        #self.do_update = True
+        self.do_update = True
 
-        self.delt_gone = 0
+        self.time_gone = time.time()
         self.time_seen = time.time()
         self.flipped = False
         self.time_thick = time.time()
 
     def check_gone(self, chef):
         gone_delt = time.time() - self.time_seen
-        self.delt_gone = gone_delt
+        self.time_gone = gone_delt
         
         if gone_delt > REM_TIME:
             chef.remove_burger(self)
@@ -234,14 +328,15 @@ class burger(object):
         return
 
 
-    def update(self,x,y, speaker):
+    def check_done(self,x,y, speaker):
         '''method that updates doneness state of the food based on time passed'''
         old_state = self.cur_state
         time_delt = time.time() - self.start_time
         self.time_seen = time.time()
 
         #TODO - have to tracks, before and after flip: will look at different times and colors
-                
+        
+        
         #update location if significantly different
         if abs(self.coords[0] - x) > SHIFT_LIMIT and abs(self.coords[1] - y > SHIFT_LIMIT):
             self.coords = (x,y)
@@ -258,7 +353,7 @@ class burger(object):
 
         #check if flipping #TODO - replace with color ? test!
         #TODO - change state track based on flip or not, two lists, two sets of colors?
-        if self.cur_state == "flip" and self.delt_gone > FLIP_MIN and self.flipped == False:
+        if self.cur_state == "flip" and self.time_gone > FLIP_MIN and self.flipped == False:
             #for now, pretend being flipped is "new" on the other side
             self.flipped = True
             self.cur_state = "new"
@@ -297,13 +392,9 @@ class sous_chef(object):
         self.cur_window = None #later start with start, for now go straight to cooking 
         self.burgers = [[None]*GRID_W]*GRID_H
         self.all_burgers = {}
-        #self.missing_burgers = {}
         #self.camera_feed
         self.frame_dims = (-1,-1) #w,h
         self.speak = speaker()
-
-        self.cooktop = cv_cooktop(cam = 0)
-        self.is_cooking = True
 
     
     def set_frame(self, coords):
@@ -329,7 +420,7 @@ class sous_chef(object):
             return new_patty
         else:
             this_patty = self.burgers[y_b][x_b]
-            this_patty.update(x,y, self.speak)
+            this_patty.check_done(x,y, self.speak)
             return this_patty
 
     def check_missing(self, missing_burgs):
@@ -342,46 +433,6 @@ class sous_chef(object):
         del(self.all_burgers[burger.name])
         self.burgers[b_loc[1]][b_loc[0]] = None
         return
-
-    # def update_cooktop(self, detected_circles , frame):
-    #     missing_burgers = self.all_burgers.copy()
-
-    #     for pt in detected_circles[0, :]: 
-    #         a, b, r = pt[0], pt[1], pt[2] 
-            
-    #         self.set_frame((frame.shape[1] , frame.shape[0])) #change this to a cook-cv class characteristic that gets passed in
-    #         patty = self.check_burgers(a,b,r)
-    #         if patty.name in missing_burgers.keys():
-    #             del(missing_burgers[patty.name])
-    #         print(patty.name , patty.cur_state, time.time())
-    #         #if(patty.flipped): print ("is_flipped")
-    
-    #         cv2.circle(frame, patty.coords, patty.rad, patty.color, patty.line_weight) 
-    
-    #     return (frame , missing_burgers)
-
-    def cook(self):
-        while(self.is_cooking):
-            #get circles
-            detected_circles, frame = self.cooktop.get_circles()
-
-            #check through circles and update
-            if detected_circles != []:
-                frame, missing_burgers = self.cooktop.circ_to_burg(self, detected_circles , frame )
-                #check through chef's burgers to see if any burgers in his list weren't detected
-                #maybe handling overall missing burgers in other main method
-                self.check_missing(missing_burgers) 
-
-            self.cooktop.show_frame(frame)
-
-            #check if stopped
-            if cv2.waitKey(1) & 0xFF == ord('q'):
-                #break
-                self.is_cooking = False
-        # When everything done, release the capture
-        self.cooktop.cap.release()
-        cv2.destroyAllWindows()
-        return
               
 
     def show_start(self):
@@ -392,7 +443,7 @@ class sous_chef(object):
         #SousApp().run()
 
         #start cooking
-        self.cook()
+        do_cv_circle(self)
 
         return
 
