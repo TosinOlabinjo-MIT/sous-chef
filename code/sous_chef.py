@@ -62,7 +62,7 @@ DONE_TIMES = {
 }
 DONE_TIMES_2 = {
     "new" : 0,
-    "flip" : 30 , 
+    "flip" : float("inf") , 
     "done" : 30,
     "overdone" : 60
 }
@@ -120,18 +120,19 @@ class cv_cooktop(object):
     def circ_to_burg(self, chef, detected_circles , frame):
         missing_burgers = chef.all_burgers.copy()
 
-        for pt in detected_circles[0, :]: 
-            a, b, r = pt[0], pt[1], pt[2] 
-            
-            chef.set_frame((frame.shape[1] , frame.shape[0])) #change this to a cook-cv class characteristic that gets passed in
-            patty = chef.check_burgers(a,b,r)
-            if patty.name in missing_burgers.keys():
-                del(missing_burgers[patty.name])
-            print(patty.name , patty.cur_state, time.time())
-            #if(patty.flipped): print ("is_flipped")
-    
-            cv2.circle(frame, patty.coords, patty.rad, patty.color, patty.line_weight) 
-    
+        if detected_circles != []:
+            for pt in detected_circles[0, :]: 
+                a, b, r = pt[0], pt[1], pt[2] 
+                
+                chef.set_frame((frame.shape[1] , frame.shape[0])) #change this to a cook-cv class characteristic that gets passed in
+                patty = chef.check_burgers(a,b,r)
+                if patty.name in missing_burgers.keys():
+                    del(missing_burgers[patty.name])
+                print(patty.name , patty.cur_state, time.time())
+                #if(patty.flipped): print ("is_flipped")
+        
+                cv2.circle(frame, patty.coords, patty.rad, patty.color, patty.line_weight) 
+        
         return (frame , missing_burgers)
 
     def show_frame(self, frame):
@@ -226,6 +227,7 @@ class burger(object):
     def check_gone(self, chef):
         gone_delt = time.time() - self.time_seen
         self.delt_gone = gone_delt
+        #print(gone_delt)
         
         if gone_delt > REM_TIME:
             chef.remove_burger(self)
@@ -250,27 +252,36 @@ class burger(object):
         if self.line_weight == THICK_LINE and time.time() - self.time_thick > THICK_TIME:
             self.line_weight = BURGER_LINE
 
-        #check the sone state
-        for state in BURGER_STATES:
-            if time_delt >= DONE_TIMES[state]:
-                self.cur_state = state
+        #update state based on which side it's on
+        if not self.flipped:
+            #check the done state
+            for state in BURGER_STATES:
+                if time_delt >= DONE_TIMES[state]:
+                    self.cur_state = state
 
 
-        #check if flipping #TODO - replace with color ? test!
-        #TODO - change state track based on flip or not, two lists, two sets of colors?
-        if self.cur_state == "flip" and self.delt_gone > FLIP_MIN and self.flipped == False:
-            #for now, pretend being flipped is "new" on the other side
-            self.flipped = True
-            self.cur_state = "new"
-            self.color = BURGER_COLOR["flipped"]
-            self.start_time = time.time()
-            print("flipped", self.name)
+            #check if flipping #TODO - replace with color ? test!
+            if self.cur_state == "flip" and self.delt_gone > FLIP_MIN:
+                #for now, pretend being flipped is "new" on the other side
+                self.flipped = True
+                self.cur_state = "new"
+                self.color = BURGER_COLOR["flipped"]
+                self.start_time = time.time()
+                print("flipped", self.name)
 
-            return
+                return
+        
+        #if it has been flipped
+        else:
+            #check the done state
+            for state in BURGER_STATES:
+                if time_delt >= DONE_TIMES_2[state]:
+                    self.cur_state = state
 
-        #if it's already been flipped, once it gets back to that state it should be done
-        if self.cur_state == "flip" and self.flipped:
-            self.cur_state = "done"
+            #if it's already been flipped, once it gets back to that state it should be done
+            if self.cur_state == "flip":
+                self.cur_state = "done"
+
 
         #update outline color
         if self.cur_state != old_state:
@@ -278,11 +289,10 @@ class burger(object):
             if self.cur_state != "new": 
                 self.time_thick = time.time()
                 self.line_weight = THICK_LINE
+                #play state change audio
                 speaker.play_state(self.cur_state)
             #self.do_update = True
-
-        #TODO - add in audio here, change to elifs so flipping doesn't break
-
+     
         return
 
 
@@ -364,15 +374,19 @@ class sous_chef(object):
         while(self.is_cooking):
             #get circles
             detected_circles, frame = self.cooktop.get_circles()
+            missing_burgers = {}
 
             #check through circles and update
-            if detected_circles != []:
-                frame, missing_burgers = self.cooktop.circ_to_burg(self, detected_circles , frame )
+            #if detected_circles != []:
+            frame, missing_burgers = self.cooktop.circ_to_burg(self, detected_circles , frame )
                 #check through chef's burgers to see if any burgers in his list weren't detected
                 #maybe handling overall missing burgers in other main method
-                self.check_missing(missing_burgers) 
+            self.check_missing(missing_burgers) 
 
             self.cooktop.show_frame(frame)
+
+            #check for questions and answer them
+            
 
             #check if stopped
             if cv2.waitKey(1) & 0xFF == ord('q'):

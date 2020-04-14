@@ -37,7 +37,7 @@ SHIFT_LIMIT = 30
 
 BURGER_LINE = 2
 THICK_LINE = 4
-THICK_TIME = 5
+THICK_TIME = 3
 
 BURGER_STATES = ["new" , "flip" , "done" , "overdone"]
 
@@ -62,7 +62,7 @@ DONE_TIMES = {
 }
 DONE_TIMES_2 = {
     "new" : 0,
-    "flip" : 30 , 
+    "flip":float("inf"),
     "done" : 30,
     "overdone" : 60
 }
@@ -250,27 +250,36 @@ class burger(object):
         if self.line_weight == THICK_LINE and time.time() - self.time_thick > THICK_TIME:
             self.line_weight = BURGER_LINE
 
-        #check the sone state
-        for state in BURGER_STATES:
-            if time_delt >= DONE_TIMES[state]:
-                self.cur_state = state
+        #update state based on which side it's on
+        if not self.flipped:
+            #check the done state
+            for state in BURGER_STATES:
+                if time_delt >= DONE_TIMES[state]:
+                    self.cur_state = state
 
 
-        #check if flipping #TODO - replace with color ? test!
-        #TODO - change state track based on flip or not, two lists, two sets of colors?
-        if self.cur_state == "flip" and self.delt_gone > FLIP_MIN and self.flipped == False:
-            #for now, pretend being flipped is "new" on the other side
-            self.flipped = True
-            self.cur_state = "new"
-            self.color = BURGER_COLOR["flipped"]
-            self.start_time = time.time()
-            print("flipped", self.name)
+            #check if flipping #TODO - replace with color ? test!
+            if self.cur_state == "flip" and self.delt_gone > FLIP_MIN:
+                #for now, pretend being flipped is "new" on the other side
+                self.flipped = True
+                self.cur_state = "new"
+                self.color = BURGER_COLOR["flipped"]
+                self.start_time = time.time()
+                print("flipped", self.name)
 
-            return
+                return
+        
+        #if it has been flipped
+        else:
+            #check the done state
+            for state in BURGER_STATES:
+                if time_delt >= DONE_TIMES_2[state]:
+                    self.cur_state = state
 
-        #if it's already been flipped, once it gets back to that state it should be done
-        if self.cur_state == "flip" and self.flipped:
-            self.cur_state = "done"
+            #if it's already been flipped, once it gets back to that state it should be done
+            if self.cur_state == "flip":
+                self.cur_state = "done"
+
 
         #update outline color
         if self.cur_state != old_state:
@@ -278,10 +287,10 @@ class burger(object):
             if self.cur_state != "new": 
                 self.time_thick = time.time()
                 self.line_weight = THICK_LINE
+                #play state change audio
                 speaker.play_state(self.cur_state)
             #self.do_update = True
 
-        #TODO - add in audio here, change to elifs so flipping doesn't break
 
         return
 
