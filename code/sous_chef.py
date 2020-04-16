@@ -37,7 +37,7 @@ SHIFT_LIMIT = 30
 
 BURGER_LINE = 2
 THICK_LINE = 4
-THICK_TIME = 5
+THICK_TIME = 2
 
 BURGER_STATES = ["new" , "flip" , "done" , "overdone"]
 
@@ -49,16 +49,21 @@ BURGER_COLOR = {
     "flipped":(180, 175, 100)
 
 }
-#TODO - update colors and states - flip state and color? 
-#OR two round of states - before and after flip?
 
 #turn into dict for rare, medium, and well_done
 #check actual times after debugging
+
+#adjust times and time dictionaries later
+MED_COOK_TIME = 60
+RARE_COOK_TIME = 45
+WELL_COOK_TIME = 90
+
+
 DONE_TIMES = {
     "new" : 0,
     "flip" : 30 , 
-    "done" : 60,
-    "overdone" : 90
+    "done" : float("inf"),
+    "overdone" : 60
 }
 DONE_TIMES_2 = {
     "new" : 0,
@@ -66,10 +71,11 @@ DONE_TIMES_2 = {
     "done" : 30,
     "overdone" : 60
 }
-REM_TIME = 30
+REM_TIME = 15
 FLIP_MIN = 2
 
-MIN_DIST = 80
+
+MIN_DIST = 300
 
 
 class StartWind(Widget):
@@ -94,6 +100,13 @@ class cv_cooktop(object):
     def get_circles(self):
          # Capture frame-by-frame
         ret, frame = self.cap.read()
+
+        # resize image
+        scale_ratio = 1.75 # percent of original size
+        width = int(frame.shape[1] * scale_ratio)
+        height = int(frame.shape[0] * scale_ratio)
+        dim = (width, height)
+        frame = cv2.resize(frame, dim, interpolation = cv2.INTER_AREA)
         
         # Our operations on the frame come here
         gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
@@ -106,7 +119,7 @@ class cv_cooktop(object):
         # Apply Hough transform on the blurred image. 
         detected_circles = cv2.HoughCircles(gray_blurred,  
                         cv2.HOUGH_GRADIENT, 1, MIN_DIST, param1 = 50, 
-                    param2 = 30, minRadius = 40, maxRadius = 80) 
+                    param2 = 30, minRadius = 80, maxRadius = 160) 
 
         if detected_circles is None: 
             return ([], frame)
@@ -141,22 +154,26 @@ class cv_cooktop(object):
         frame = cv2.flip(frame , 0)
         #resize image
         #cv2.namedWindow("main", cv2.WINDOW_NORMAL)
-        scale_ratio = 1.75 # percent of original size
-        width = int(frame.shape[1] * scale_ratio)
-        height = int(frame.shape[0] * scale_ratio)
-        dim = (width, height)
-        # resize image
-        resized = cv2.resize(frame, dim, interpolation = cv2.INTER_AREA)
-
+        # scale_ratio = 1.75 # percent of original size
+        # width = int(frame.shape[1] * scale_ratio)
+        # height = int(frame.shape[0] * scale_ratio)
+        
         #apply any other transofrmations on the frame
-        #frame = resized
+
+        # # resize image
+        # resized = cv2.resize(frame, dim, interpolation = cv2.INTER_AREA)
+        #chef.set_frame((resized.shape[1] , resized.shape[0]))
+
+        
+       
 
         # Display the resulting frame
-        cv2.imshow("main", resized)
+        cv2.imshow("main", frame)
+        
         #cv2.imshow('blurred img' , gray_blurred)
         # if cv2.waitKey(1) & 0xFF == ord('q'):
         #     break
-        return resized
+        return frame
 
 
 class speaker(object):
@@ -165,22 +182,34 @@ class speaker(object):
             "new" : "",
             "flip": "This burger is ready to be flipped",
             "done": "This burger is done",
+            "overdone" : "This burger is starting to overcook on this side"
+        }
+
+        self.state_msgs_2 = {
+            "new" : "",
+            "flip": "This burger is ready to be flipped",
+            "done": "This burger is done",
             "overdone" : "This burger is starting to overcook"
         }
         
 
-    def play_state(self, b_state):
+    def play_state(self, b_state, is_flipped):
         #check audio folder
         a_folder = os.getcwd() + "\\audio\\states\\"
         #a_folder = "C:/sous-chef/code/audio/states/"
         if not os.path.exists(a_folder):
             os.makedirs(a_folder)
 
+
+
         #create audio file if it doensn't exist
-        a_file = a_folder+b_state+".mp3"
-        a_wav = a_folder+b_state+".wav"
+        filename = a_folder+b_state
+        if is_flipped: filename += "-flip"
+        a_file = filename+".mp3"
+        a_wav = filename+".wav"
         if not os.path.isfile(a_file):
-            speech = gTTS(text = self.state_msgs[b_state] , lang = 'en', slow = False)
+            sp_text = self.state_msgs[b_state] if is_flipped else self.state_msgs[b_state]
+            speech = gTTS(text = sp_text, lang = 'en', slow = False)
             speech.save(a_file)
             sound = AudioSegment.from_mp3(a_file)
             sound.export(a_wav, format="wav")
@@ -195,8 +224,53 @@ class speaker(object):
         sd.play(data, fs)
         #status = sd.wait()  # Wait until file is done playing
         return
+    def say(self, script):
+        #check audio folder
+        a_folder = os.getcwd() + "\\audio\\resp\\"
+        #a_folder = "C:/sous-chef/code/audio/states/"
+        if not os.path.exists(a_folder):
+            os.makedirs(a_folder)
+
+
+        #create audio file if it doensn't exist
+        filename = a_folder+"resp" #TODO - change this
+        a_file = filename+".mp3"
+        a_wav = filename+".wav"
+        if not os.path.isfile(a_file):
+            sp_text = script
+            speech = gTTS(text = sp_text, lang = 'en', slow = False)
+            speech.save(a_file)
+            sound = AudioSegment.from_mp3(a_file)
+            sound.export(a_wav, format="wav")
+
+
+        #play audio
+        data, fs = sf.read(a_wav, dtype='float32')  
+        sd.play(data, fs)
+
+        return
 
     #TODO - need functions for done time answer & processing input speech
+
+    def say_time_left(self, time_left , burger):
+        tot_time = time_left
+        resp = ""
+
+        if not burger.flipped:
+            min_flip = int(time_left/60.0)
+            sec_flip = int(time_left%60)
+            resp += "{0} minutes and {1} seconds until this burger needs to be flipped. ".format(min_flip, sec_flip)
+            tot_time = time_left + burger.time_after_flip
+            
+        else:
+            min_left = int(tot_time/60.0)
+            sec_left = int(tot_time%60)
+            resp += "{0} minutes and {1} seconds until this burger is done.".format(min_left, sec_left)
+
+        self.say(resp)
+        return
+        
+
 
 
 
@@ -207,7 +281,8 @@ class burger(object):
         #find way to unique name burgers based on location
         self.name = "burg-"+str(int(x/10))+"-"+str(int(y/10))
 
-        self.time_to_cook = None #later adjust cooktimes based on size of patty
+        self.time_to_cook = MED_COOK_TIME #later adjust cooktimes based on size of patty
+        self.time_after_flip = int(self.time_to_cook/2)
         self.start_time = time.time()
 
         #patty.coords, patty.rad, patty.color, patty.line_weight) 
@@ -234,6 +309,13 @@ class burger(object):
             print("removed", self.name)
         
         return
+
+    def get_time_left(self):
+        time_cooked = time.time() - self.start_time
+        #returns it in seconds
+        time_left = self.time_to_cook - time_cooked
+        #also return until done or until flip
+        return (time_left)
 
 
     def update(self,x,y, speaker):
@@ -289,8 +371,9 @@ class burger(object):
             if self.cur_state != "new": 
                 self.time_thick = time.time()
                 self.line_weight = THICK_LINE
+
                 #play state change audio
-                speaker.play_state(self.cur_state)
+                speaker.play_state(self.cur_state, self.flipped)
             #self.do_update = True
      
         return
@@ -320,9 +403,56 @@ class sous_chef(object):
         self.frame_dims = coords
 
     def grid_loc(self, x , y):
+        #print(self.frame_dims)
+        #print(x,y)
         x_b = int( (x * 5) / self.frame_dims[0])
         y_b = int( (y * 5) / self.frame_dims[1])
+        #print(x_b , y_b)
         return (x_b , y_b)
+
+    
+    def get_burger(self,x,y):
+        print(self.burgers)
+    
+        this_burger = self.burgers[y][x]
+
+        #switch x and y?
+        return this_burger
+
+    
+    def ask_time_left(self, event, x, y , flags, param):
+        # if the left mouse button was clicked, record the
+        # (x, y) coordinates
+        # performed
+        # if event == cv2.EVENT_LBUTTONDOWN:
+        #     point = (x, y)
+        #     #get recording
+        
+        # check to see if the left mouse button was released
+        # elif event == cv2.EVENT_LBUTTONUP:
+        #replace this to be leap motion based #TODO
+        if event == cv2.EVENT_LBUTTONUP:
+            # record the (x, y) coordinates
+            point = (x,y)
+            
+            #send audio to google speech API - #TODO and get actual question
+
+            #convert point to burger loc
+            bx,by = self.grid_loc(point[0], point[1])
+            print("screen", x, y)
+            print('burg', bx, by)
+
+            this_burger = self.get_burger(bx,by) 
+            if this_burger == None:
+                return
+            #TODO - highlight burger outline?
+            #ask question about burger
+            time_left = this_burger.get_time_left()
+            self.speak.say_time_left(time_left , this_burger)
+
+        return
+
+
         
     
     def check_burgers(self , x , y, r):
@@ -353,23 +483,6 @@ class sous_chef(object):
         self.burgers[b_loc[1]][b_loc[0]] = None
         return
 
-    # def update_cooktop(self, detected_circles , frame):
-    #     missing_burgers = self.all_burgers.copy()
-
-    #     for pt in detected_circles[0, :]: 
-    #         a, b, r = pt[0], pt[1], pt[2] 
-            
-    #         self.set_frame((frame.shape[1] , frame.shape[0])) #change this to a cook-cv class characteristic that gets passed in
-    #         patty = self.check_burgers(a,b,r)
-    #         if patty.name in missing_burgers.keys():
-    #             del(missing_burgers[patty.name])
-    #         print(patty.name , patty.cur_state, time.time())
-    #         #if(patty.flipped): print ("is_flipped")
-    
-    #         cv2.circle(frame, patty.coords, patty.rad, patty.color, patty.line_weight) 
-    
-    #     return (frame , missing_burgers)
-
     def cook(self):
         while(self.is_cooking):
             #get circles
@@ -386,12 +499,13 @@ class sous_chef(object):
             self.cooktop.show_frame(frame)
 
             #check for questions and answer them
-            
+            cv2.setMouseCallback("main", self.ask_time_left)
 
             #check if stopped
             if cv2.waitKey(1) & 0xFF == ord('q'):
                 #break
                 self.is_cooking = False
+
         # When everything done, release the capture
         self.cooktop.cap.release()
         cv2.destroyAllWindows()

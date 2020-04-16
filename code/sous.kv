@@ -1,11 +1,27 @@
 #:kivy 1.0.9
 
 <StartWind>: 
+    canvas:
+        #Color: 
+        #    rgba: (80/255, 41/255, 41/255, 1) 
+        Rectangle:
+            #source: "abstract_lights_red_lighter.png"
+            pos: self.pos
+            size: self.size
+
     BoxLayout:
+        id: start_menu
         orientation: 'vertical'
-        size: root.width * 1.0, root.height * 1.0
-        x: root.x
-        top: self.height and root.y + root.height * 1.0
+        size: (root.size[0] * 1.0, root.size[1] * 1.0)
+        pos: (root.pos[0] , root.pos[1])
+        #size: root.width * 1.0, root.height * 1.0
+        #x: root.x
+        #top: self.height and root.y + root.height * 1.0
+        #cols: 4
+        padding: 20
+        spacing: 10
+        
+        
         Label:
             text: 'Sous Chef - title graphic'
             size_hint_y: 0.75
@@ -15,17 +31,49 @@
 
      
 
-
-<CookWind>:    
-    BoxLayout:
-        orientation: 'vertical'
-        size: root.width * 1.0, root.height * 1.0
-        x: root.x
-        top: self.height and root.y + root.height * 1.0
-        padding: 10
-        Label:
-            text: 'Camera feed here'
-            size_hint_y: 0.75
-        Label:
-            text: 'Options will go here'
-            size_hint_y: 0.25
+<ChooseDone>:
+    title: "pick desired doneness"
+    #content:'popup'
+    GridLayout:
+        id: button_grid
+        cols: 1
+        padding: 20
+        spacing: 10
+        size: (root.size[0], root.size[1])
+        pos: (root.pos[0], root.pos[1])
+        Button:
+            id: BuddyBaymax
+            value: "BuddyBaymax"
+            background_normal: "base icon_1_TP.png"
+            background_down: "base icon_1_pressed.png"
+        Button:
+            id: MedicBaymax
+            value: "MedicBaymax"
+            background_normal: "medical_bay.png"
+            background_down: "medical_bay_pressed.png"
+        Button:
+            id: FighterBaymax
+            value: "FighterBaymax"
+            background_normal: "fighter_bay.png"
+            background_down: "fighter_bay_pressed.png"
+        Button:
+            id: CR_exit
+            value: "CR_exit"
+            pos_hint: {'right':1, 'top':1}
+            size_hint:(0.2,0.35)
+            background_normal: "exit_button.png"
+            background_down: "exit_button_pressed.png"  
+            on_release: root.dismiss()
+# <CookWind>:    
+#     BoxLayout:
+#         orientation: 'vertical'
+#         size: root.width * 1.0, root.height * 1.0
+#         x: root.x
+#         top: self.height and root.y + root.height * 1.0
+#         padding: 10
+#         Label:
+#             text: 'Camera feed here'
+#             size_hint_y: 0.75
+#         Label:
+#             text: 'Options will go here'
+#             size_hint_y: 0.25
