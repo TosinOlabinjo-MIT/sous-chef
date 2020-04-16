@@ -74,6 +74,8 @@ DONE_TIMES_2 = {
 REM_TIME = 15
 FLIP_MIN = 2
 
+MAX_B_W = 5
+MAX_B_H = 5
 
 MIN_DIST = 300
 
@@ -100,6 +102,10 @@ class cv_cooktop(object):
     def get_circles(self):
          # Capture frame-by-frame
         ret, frame = self.cap.read()
+
+        #flip images
+        frame = cv2.flip(frame , 1)
+        frame = cv2.flip(frame , 0)
 
         # resize image
         scale_ratio = 1.75 # percent of original size
@@ -149,23 +155,8 @@ class cv_cooktop(object):
         return (frame , missing_burgers)
 
     def show_frame(self, frame):
-        #flip images
-        frame = cv2.flip(frame , 1)
-        frame = cv2.flip(frame , 0)
-        #resize image
-        #cv2.namedWindow("main", cv2.WINDOW_NORMAL)
-        # scale_ratio = 1.75 # percent of original size
-        # width = int(frame.shape[1] * scale_ratio)
-        # height = int(frame.shape[0] * scale_ratio)
-        
-        #apply any other transofrmations on the frame
-
-        # # resize image
-        # resized = cv2.resize(frame, dim, interpolation = cv2.INTER_AREA)
-        #chef.set_frame((resized.shape[1] , resized.shape[0]))
-
-        
-       
+               
+        #apply any other transofrmations on the frame     
 
         # Display the resulting frame
         cv2.imshow("main", frame)
@@ -236,12 +227,12 @@ class speaker(object):
         filename = a_folder+"resp" #TODO - change this
         a_file = filename+".mp3"
         a_wav = filename+".wav"
-        if not os.path.isfile(a_file):
-            sp_text = script
-            speech = gTTS(text = sp_text, lang = 'en', slow = False)
-            speech.save(a_file)
-            sound = AudioSegment.from_mp3(a_file)
-            sound.export(a_wav, format="wav")
+        #if not os.path.isfile(a_file):
+        sp_text = script
+        speech = gTTS(text = sp_text, lang = 'en', slow = False)
+        speech.save(a_file)
+        sound = AudioSegment.from_mp3(a_file)
+        sound.export(a_wav, format="wav")
 
 
         #play audio
@@ -388,7 +379,9 @@ class sous_chef(object):
     def __init__(self):
         self.running = True
         self.cur_window = None #later start with start, for now go straight to cooking 
-        self.burgers = [[None]*GRID_W]*GRID_H
+        #self.burgers = [[None]*GRID_W]*GRID_H
+        self.burgers = [ [ None for i in range(GRID_W) ] for j in range(GRID_H) ]
+        #print(self.burgers)
         self.all_burgers = {}
         #self.missing_burgers = {}
         #self.camera_feed
@@ -405,14 +398,13 @@ class sous_chef(object):
     def grid_loc(self, x , y):
         #print(self.frame_dims)
         #print(x,y)
-        x_b = int( (x * 5) / self.frame_dims[0])
-        y_b = int( (y * 5) / self.frame_dims[1])
+        x_b = int( (x * MAX_B_W) / self.frame_dims[0])
+        y_b = int( (y * MAX_B_H) / self.frame_dims[1])
         #print(x_b , y_b)
         return (x_b , y_b)
 
     
     def get_burger(self,x,y):
-        print(self.burgers)
     
         this_burger = self.burgers[y][x]
 
@@ -459,13 +451,16 @@ class sous_chef(object):
         new_patty = burger(x , y, r)
 
         x_b, y_b = self.grid_loc(x,y)
-
+        print("screen", x,y)
+        print("burger" , x_b, y_b)
         #check if brand new, new location of old, or just old
 
         if self.burgers[y_b][x_b] == None:
+            
             self.burgers[y_b][x_b] = new_patty
             self.all_burgers[new_patty.name] = (x_b, y_b)
             print("brand new")
+            #print(self.burgers)
             return new_patty
         else:
             this_patty = self.burgers[y_b][x_b]
