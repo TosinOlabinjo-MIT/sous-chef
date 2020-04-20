@@ -31,8 +31,8 @@ import os
 
 # credit:
 #from pyleap.leap import getLeapInfo, getLeapFrame
-GRID_W = 4
-GRID_H = 4
+GRID_W = 5
+GRID_H = 5
 SHIFT_LIMIT = 30
 
 MIN_DIST = 300
@@ -59,54 +59,6 @@ BURGER_COLOR = {
 MED_COOK_TIME = 60
 RARE_COOK_TIME = 45
 WELL_COOK_TIME = 90
-
-COOK_TIMES = {
-             "RARE":
-                {
-                "pre-flip":{ 
-                    "new" : 0,
-                    "flip" : 30 , 
-                    "done" : float("inf"),
-                    "overdone" : 60
-                            },
-                "post-flip":{
-                    "new" : 0,
-                    "flip" : float("inf") , 
-                    "done" : 30,
-                    "overdone" : 60
-                            }
-                },
-            "MED":
-                {
-                "pre-flip":{ 
-                    "new" : 0,
-                    "flip" : 30 , 
-                    "done" : float("inf"),
-                    "overdone" : 60
-                            },
-                "post-flip":{
-                    "new" : 0,
-                    "flip" : float("inf") , 
-                    "done" : 30,
-                    "overdone" : 60
-                            }
-                },
-            "WELL":
-                {
-                "pre-flip":{ 
-                    "new" : 0,
-                    "flip" : 30 , 
-                    "done" : float("inf"),
-                    "overdone" : 60
-                            },
-                "post-flip":{
-                    "new" : 0,
-                    "flip" : float("inf") , 
-                    "done" : 30,
-                    "overdone" : 60
-                            }
-                }
-            }
 
 
 DONE_TIMES = {
@@ -171,7 +123,7 @@ class cv_cooktop(object):
         # Apply Hough transform on the blurred image. 
         detected_circles = cv2.HoughCircles(gray_blurred,  
                         cv2.HOUGH_GRADIENT, 1, MIN_DIST, param1 = 50, 
-                    param2 = 30, minRadius = 95, maxRadius = 115) 
+                    param2 = 30, minRadius = 80, maxRadius = 160) 
 
         if detected_circles is None: 
             return ([], frame)
@@ -195,7 +147,6 @@ class cv_cooktop(object):
                     del(missing_burgers[patty.name])
                 print(patty.name , patty.cur_state, time.time())
                 #if(patty.flipped): print ("is_flipped")
-                print(r)
         
                 cv2.circle(frame, patty.coords, patty.rad, patty.color, patty.line_weight) 
         
@@ -246,7 +197,7 @@ class speaker(object):
         a_file = filename+".mp3"
         a_wav = filename+".wav"
         if not os.path.isfile(a_file):
-            sp_text = self.state_msgs_2[b_state] if is_flipped else self.state_msgs[b_state]
+            sp_text = self.state_msgs[b_state] if is_flipped else self.state_msgs[b_state]
             speech = gTTS(text = sp_text, lang = 'en', slow = False)
             speech.save(a_file)
             sound = AudioSegment.from_mp3(a_file)
