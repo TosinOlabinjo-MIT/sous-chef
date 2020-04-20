@@ -2,10 +2,10 @@
 
 <StartWind>: 
     canvas:
-        #Color: 
-        #    rgba: (80/255, 41/255, 41/255, 1) 
+        Color: 
+            rgba: (0/255, 0/255, 50/255, 1) 
         Rectangle:
-            #source: "abstract_lights_red_lighter.png"
+            #source: "logo.png"
             pos: self.pos
             size: self.size
 
@@ -21,59 +21,70 @@
         padding: 20
         spacing: 10
         
-        
-        Label:
-            text: 'Sous Chef - title graphic'
+        #Label:
+        Button:
+            #text: "Sous Chef"
             size_hint_y: 0.75
+            background_normal: "logo.png"
+            background_down: "logo.png"
+            value: "logo"
+            #background: "logo.png"
+            
         Button:
             text: 'Start'
             size_hint_y: 0.25
+            id: start_button
+            value: "Start"
 
      
 
 <ChooseDone>:
     title: "pick desired doneness"
     #content:'popup'
-    GridLayout:
-        id: button_grid
-        cols: 1
-        padding: 20
-        spacing: 10
-        size: (root.size[0], root.size[1])
-        pos: (root.pos[0], root.pos[1])
+    FloatLayout:
+        # Button:
+        #     id: exit
+        #     value: "exit"
+        #     text: "exit"
+        #     pos_hint: {'right':1, 'top':1}
+        #     size_hint:(0.05,0.1)
+        #     # background_normal: "exit_button.png"
+        #     # background_down: "exit_button_pressed.png"  
+        #     on_release: root.dismiss()
+
+        GridLayout:
+            id: button_grid
+            cols: 1
+            padding: 20
+            spacing: 10
+            size: (root.size[0], root.size[1])
+            pos: (root.pos[0], root.pos[1])
+            Button:
+                id: Rare
+                value: "Rare"
+                text: "Rare"
+                #background_normal: "base icon_1_TP.png"
+                #background_down: "base icon_1_pressed.png"
+            Button:
+                id: Medium
+                value: "Med"
+                text: "Medium"
+                #on_release: callback
+                #background_normal: "medical_bay.png"
+                #background_down: "medical_bay_pressed.png"
+            Button:
+                id: Well_done
+                value: "Well"
+                text: "Well done"
+                #background_normal: "fighter_bay.png"
+                #background_down: "fighter_bay_pressed.png"
         Button:
-            id: BuddyBaymax
-            value: "BuddyBaymax"
-            background_normal: "base icon_1_TP.png"
-            background_down: "base icon_1_pressed.png"
-        Button:
-            id: MedicBaymax
-            value: "MedicBaymax"
-            background_normal: "medical_bay.png"
-            background_down: "medical_bay_pressed.png"
-        Button:
-            id: FighterBaymax
-            value: "FighterBaymax"
-            background_normal: "fighter_bay.png"
-            background_down: "fighter_bay_pressed.png"
-        Button:
-            id: CR_exit
-            value: "CR_exit"
+            id: exit
+            value: "exit"
+            text: "exit"
             pos_hint: {'right':1, 'top':1}
-            size_hint:(0.2,0.35)
-            background_normal: "exit_button.png"
-            background_down: "exit_button_pressed.png"  
+            size_hint:(0.05,0.08)
+            # background_normal: "exit_button.png"
+            # background_down: "exit_button_pressed.png"  
             on_release: root.dismiss()
-# <CookWind>:    
-#     BoxLayout:
-#         orientation: 'vertical'
-#         size: root.width * 1.0, root.height * 1.0
-#         x: root.x
-#         top: self.height and root.y + root.height * 1.0
-#         padding: 10
-#         Label:
-#             text: 'Camera feed here'
-#             size_hint_y: 0.75
-#         Label:
-#             text: 'Options will go here'
-#             size_hint_y: 0.25
+

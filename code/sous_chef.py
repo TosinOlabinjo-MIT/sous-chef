@@ -20,6 +20,8 @@ from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.image import Image
 from kivy.clock import Clock
 from kivy.graphics.texture import Texture
+from kivy.uix.popup import Popup
+from kivy.uix.button import Button
 
 from gtts import gTTS
 import winsound
@@ -31,14 +33,14 @@ import os
 
 # credit:
 #from pyleap.leap import getLeapInfo, getLeapFrame
-GRID_W = 4
-GRID_H = 4
+GRID_W = 5
+GRID_H = 5
 SHIFT_LIMIT = 30
 
 MIN_DIST = 300
 
 BURGER_LINE = 2
-THICK_LINE = 4
+THICK_LINE = 5
 THICK_TIME = 2
 
 BURGER_STATES = ["new" , "flip" , "done" , "overdone"]
@@ -61,7 +63,22 @@ RARE_COOK_TIME = 45
 WELL_COOK_TIME = 90
 
 COOK_TIMES = {
-             "RARE":
+             "Rare":
+                {
+                "pre-flip":{ 
+                    "new" : 0,
+                    "flip" : 20 , 
+                    "done" : float("inf"),
+                    "overdone" : 45
+                            },
+                "post-flip":{
+                    "new" : 0,
+                    "flip" : float("inf") , 
+                    "done" : 20,
+                    "overdone" : 45
+                            }
+                },
+            "Med":
                 {
                 "pre-flip":{ 
                     "new" : 0,
@@ -76,34 +93,19 @@ COOK_TIMES = {
                     "overdone" : 60
                             }
                 },
-            "MED":
+            "Well":
                 {
                 "pre-flip":{ 
                     "new" : 0,
-                    "flip" : 30 , 
+                    "flip" : 45 , 
                     "done" : float("inf"),
-                    "overdone" : 60
+                    "overdone" : 90
                             },
                 "post-flip":{
                     "new" : 0,
                     "flip" : float("inf") , 
-                    "done" : 30,
-                    "overdone" : 60
-                            }
-                },
-            "WELL":
-                {
-                "pre-flip":{ 
-                    "new" : 0,
-                    "flip" : 30 , 
-                    "done" : float("inf"),
-                    "overdone" : 60
-                            },
-                "post-flip":{
-                    "new" : 0,
-                    "flip" : float("inf") , 
-                    "done" : 30,
-                    "overdone" : 60
+                    "done" : 45,
+                    "overdone" : 90
                             }
                 }
             }
@@ -125,21 +127,91 @@ REM_TIME = 15
 FLIP_MIN = 2
 
 
+#----------------UI code------------------------------------
+def callback(instance):
+    #instance.disabled = True
+    val = instance.value
+    #print(val)
+
+    #open the correct window
+    open_window(val)
+
+    #do only for buttons with commmands? TODO
+    #send the command
+    #send_command(val)
+    
+    #play correct audio
+    #play_audio(val)
+    
+    #instance.disabled = False
+    
+    return
+
+def open_window(button_pressed):
+    #open the appropiate window
+    
+    #bring up doneness selction #TODO
+    if button_pressed == "Start":	
+        cd_popup = ChooseDone()
+        cd_popup.open()
+        
+        
+    #display card reader instructions
+    elif button_pressed in ("Rare", "Med", "Well"):
+        #set cooktimes based on button press #TODO
+        print("Pressed", button_pressed)
+        times = COOK_TIMES[button_pressed]
+        print(times)
+
+        sc = sous_chef(times)
+        sc.run()
+        
+    
+    else:
+        #display wait msg
+        pass
+    
+    
+    
+    return
+
 
 class StartWind(Widget):
     pass
     # def build(self):
     #     print("idk")
 
+class ChooseDone(Popup):
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+
+        #rare
+        rare_button = self.ids.Rare
+        rare_button.bind(on_release = callback)
+
+        #med
+        med_button = self.ids.Medium
+        med_button.bind(on_release = callback)
+
+        #well done
+        well_button = self.ids.Well_done
+        well_button.bind(on_release = callback)
 
 class SousApp(App):
     def build(self):
-        cur_window = StartWind()
-        #print("started sous")
-        #return CookWind()
-        return cur_window
+        start_window = StartWind()
+        
+        #start button
+        start_button = start_window.ids.start_button
+        start_button.bind(on_release = callback)
+
+        return start_window
+
+#------------------------------------------------
 
 
+
+#------------Cooking Code--------------------------
 
 class cv_cooktop(object):
     def __init__(self, cam = 1):
@@ -424,9 +496,9 @@ class sous_chef(object):
     '''
     Class that manages the main workflow of sous-chef
     '''
-    def __init__(self):
+    def __init__(self , cook_times = COOK_TIMES["Med"]):
         self.running = True
-        self.cur_window = None #later start with start, for now go straight to cooking 
+        #self.cur_window = None #later start with start, for now go straight to cooking 
         #self.burgers = [[None]*GRID_W]*GRID_H
         self.burgers = [ [ None for i in range(GRID_W) ] for j in range(GRID_H) ]
         #print(self.burgers)
@@ -438,6 +510,7 @@ class sous_chef(object):
 
         self.cooktop = cv_cooktop(cam = 0)
         self.is_cooking = True
+        self.cook_times = cook_times
 
     
     def set_frame(self, coords):
@@ -514,6 +587,7 @@ class sous_chef(object):
             return new_patty
         else:
             this_patty = self.burgers[y_b][x_b]
+            #TODO - pass in cooktimes from self
             this_patty.update(x,y, self.speak)
             return this_patty
 
@@ -576,8 +650,11 @@ class sous_chef(object):
 
 
 def main():
-    sc = sous_chef()
-    sc.run()
+
+    SousApp().run()
+
+    #sc = sous_chef()
+    #sc.run()
     # #close window after running stops
     # cv2.destroyAllWindows()
 
