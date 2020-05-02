@@ -58,9 +58,11 @@ BURGER_COLOR = {
 #check actual times after debugging
 
 #adjust times and time dictionaries later
-MED_COOK_TIME = 60
-RARE_COOK_TIME = 45
-WELL_COOK_TIME = 90
+# MED_COOK_TIME = 60
+# RARE_COOK_TIME = 45
+# WELL_COOK_TIME = 90
+TOT_COOK_TIMES = {"Rare" : 45 , "Med" : 60 , "Well" : 90}
+TOT_TIME = TOT_COOK_TIMES["Med"]
 
 COOK_TIMES = {
              "Rare":
@@ -158,9 +160,11 @@ def open_window(button_pressed):
         
     #display card reader instructions
     elif button_pressed in ("Rare", "Med", "Well"):
+        global TOT_TIME
         #set cooktimes based on button press #TODO
         print("Pressed", button_pressed)
         times = COOK_TIMES[button_pressed]
+        TOT_TIME = TOT_COOK_TIMES[button_pressed]
         print(times)
 
         sc = sous_chef(times)
@@ -170,8 +174,6 @@ def open_window(button_pressed):
     else:
         #display wait msg
         pass
-    
-    
     
     return
 
@@ -265,11 +267,25 @@ class cv_cooktop(object):
                 patty = chef.check_burgers(a,b,r)
                 if patty.name in missing_burgers.keys():
                     del(missing_burgers[patty.name])
-                print(patty.name , patty.cur_state, time.time())
+                #print(patty.name , patty.cur_state, time.time())
                 #if(patty.flipped): print ("is_flipped")
-                print(r)
+                #print(r)
         
                 cv2.circle(frame, patty.coords, patty.rad, patty.color, patty.line_weight) 
+
+                #draw pie chart timer
+                end_angle = ((TOT_TIME - patty.get_time_left()) / TOT_TIME)*360
+                
+                if patty.flipped: end_angle += 180
+                
+                if patty.cur_state == "done":
+                    #TODO have a - until overdone 
+                    pass
+                
+                if patty.cur_state == "overdone" : 
+                    end_angle = 360
+                    
+                cv2.ellipse(frame, patty.coords, (7,7), -90, 0, end_angle, patty.color, thickness=3, lineType=8, shift=0) 
         
         return (frame , missing_burgers)
 
@@ -388,7 +404,7 @@ class burger(object):
         #find way to unique name burgers based on location
         self.name = "burg-"+str(int(x/10))+"-"+str(int(y/10))
 
-        self.time_to_cook = MED_COOK_TIME #later adjust cooktimes based on size of patty
+        self.time_to_cook = TOT_TIME #later adjust cooktimes based on size of patty
         self.time_after_flip = int(self.time_to_cook/2)
         self.start_time = time.time()
 
@@ -425,14 +441,15 @@ class burger(object):
         return (time_left)
 
 
-    def update(self,x,y, speaker):
+    def update(self,x,y, chef):
         '''method that updates doneness state of the food based on time passed'''
         old_state = self.cur_state
         time_delt = time.time() - self.start_time
         self.time_seen = time.time()
 
-        #TODO - have to tracks, before and after flip: will look at different times and colors
-                
+        speaker = chef.speak
+        cook_times = chef.cook_times
+              
         #update location if significantly different
         if abs(self.coords[0] - x) > SHIFT_LIMIT and abs(self.coords[1] - y > SHIFT_LIMIT):
             self.coords = (x,y)
@@ -445,12 +462,12 @@ class burger(object):
         if not self.flipped:
             #check the done state
             for state in BURGER_STATES:
-                if time_delt >= DONE_TIMES[state]:
+                if time_delt >= cook_times["pre-flip"][state]:
                     self.cur_state = state
 
 
             #check if flipping #TODO - replace with color ? test!
-            if self.cur_state == "flip" and self.delt_gone > FLIP_MIN:
+            if (self.cur_state == "flip" or self.cur_state == "overdone") and not self.flipped and self.delt_gone > FLIP_MIN:
                 #for now, pretend being flipped is "new" on the other side
                 self.flipped = True
                 self.cur_state = "new"
@@ -464,7 +481,7 @@ class burger(object):
         else:
             #check the done state
             for state in BURGER_STATES:
-                if time_delt >= DONE_TIMES_2[state]:
+                if time_delt >= cook_times["post-flip"][state]:
                     self.cur_state = state
 
             #if it's already been flipped, once it gets back to that state it should be done
@@ -574,8 +591,8 @@ class sous_chef(object):
         new_patty = burger(x , y, r)
 
         x_b, y_b = self.grid_loc(x,y)
-        print("screen", x,y)
-        print("burger" , x_b, y_b)
+        #print("screen", x,y)
+        #print("burger" , x_b, y_b)
         #check if brand new, new location of old, or just old
 
         if self.burgers[y_b][x_b] == None:
@@ -588,7 +605,7 @@ class sous_chef(object):
         else:
             this_patty = self.burgers[y_b][x_b]
             #TODO - pass in cooktimes from self
-            this_patty.update(x,y, self.speak)
+            this_patty.update(x,y, self)
             return this_patty
 
     def check_missing(self, missing_burgs):
@@ -655,10 +672,9 @@ def main():
 
     #sc = sous_chef()
     #sc.run()
+
     # #close window after running stops
     # cv2.destroyAllWindows()
-
-    #do_cv()
     
 
     return
