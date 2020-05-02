@@ -3,7 +3,8 @@
 <StartWind>: 
     canvas:
         Color: 
-            rgba: (0/255, 0/255, 50/255, 1) 
+            #rgba: (0/255, 0/255, 0/255, 1) #(0,0,50 = navy)
+            rgba: (38/255, 70/255, 80/255, 1) 
         Rectangle:
             #source: "logo.png"
             pos: self.pos
@@ -18,30 +19,43 @@
         #x: root.x
         #top: self.height and root.y + root.height * 1.0
         #cols: 4
-        padding: 20
-        spacing: 10
+        padding: 1
+        spacing: 1
         
         #Label:
         Button:
             #text: "Sous Chef"
-            size_hint_y: 0.75
-            background_normal: "logo-crop.png"
-            background_down: "logo-crop.png"
+            #size_hint_y: 0.6
+            background_normal: "ui/logo-crop.png"
+            background_down: "ui/logo-crop.png"
             value: "logo"
             #background: "logo.png"
             
         Button:
-            text: 'Start'
-            size_hint_y: 0.25
+            #text: 'Start'
+            #size_hint_y: 0.4
+            
             id: start_button
             value: "Start"
+            background_normal: "ui/start.png"
+            background_down: "ui/start_down.png"
 
      
 
 <ChooseDone>:
-    title: "pick desired doneness"
+    title: "How would you like your burgers cooked?"
+    
     #content:'popup'
-    FloatLayout:
+    GridLayout:
+        cols: 2
+        canvas:
+            Color: 
+                #rgba: (0/255, 0/255, 0/255, 1) 
+                rgba: (38/255, 70/255, 80/255, 1)
+            Rectangle:
+                #source: "logo.png"
+                pos: self.pos
+                size: self.size
         # Button:
         #     id: exit
         #     value: "exit"
@@ -53,38 +67,42 @@
         #     on_release: root.dismiss()
 
         GridLayout:
+            size_hint_x: 0.75
             id: button_grid
             cols: 1
-            padding: 20
-            spacing: 10
+            padding: 0
+            spacing: 0
             size: (root.size[0], root.size[1])
             pos: (root.pos[0], root.pos[1])
             Button:
                 id: Rare
                 value: "Rare"
-                text: "Rare"
-                #background_normal: "base icon_1_TP.png"
-                #background_down: "base icon_1_pressed.png"
+                #text: "Rare"
+                background_normal: "ui/rare_butt.png"
+                background_down: "ui/rare_butt_down.png"
             Button:
                 id: Medium
                 value: "Med"
-                text: "Medium"
+                #text: "Medium"
                 #on_release: callback
-                #background_normal: "medical_bay.png"
-                #background_down: "medical_bay_pressed.png"
+                background_normal: "ui/med_butt.png"
+                background_down: "ui/med_butt_down.png"
             Button:
                 id: Well_done
                 value: "Well"
-                text: "Well done"
-                #background_normal: "fighter_bay.png"
-                #background_down: "fighter_bay_pressed.png"
-        Button:
-            id: exit
-            value: "exit"
-            text: "exit"
-            pos_hint: {'right':1, 'top':1}
-            size_hint:(0.05,0.08)
-            # background_normal: "exit_button.png"
-            # background_down: "exit_button_pressed.png"  
-            on_release: root.dismiss()
+                #text: "Well done"
+                background_normal: "ui/well_butt.png"
+                background_down: "ui/well_butt_down.png"
+        
+        FloatLayout:
+            size_hint_x: 0.25
+            Button:   
+                id: exit
+                value: "exit"
+                #text: "exit"
+                pos_hint: {'right':1, 'top':1.0}
+                size_hint:(1.0,0.15)
+                background_normal: "ui/exit.png"
+                background_down: "ui/exit_down.png"  
+                on_release: root.dismiss()
 

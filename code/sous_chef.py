@@ -32,7 +32,12 @@ from pydub import AudioSegment
 import os
 
 # credit:
-#from pyleap.leap import getLeapInfo, getLeapFrame
+from time import sleep
+import sys
+#sys.path.insert(0, os.path.abspath('..'))
+from pyleap_master.pyleap.leap import getLeapInfo, getLeapFrame
+
+
 GRID_W = 5
 GRID_H = 5
 SHIFT_LIMIT = 30
@@ -50,9 +55,11 @@ BURGER_COLOR = {
     "flip":(0, 255, 255),
     "done":(77, 255, 77),
     "overdone":(0 , 0, 255),
-    "flipped":(180, 175, 100)
+    "flipped":(200, 10, 100)
 
 }
+
+CURSOR_COLOR = (255, 255, 255)
 
 #turn into dict for rare, medium, and well_done
 #check actual times after debugging
@@ -125,8 +132,9 @@ DONE_TIMES_2 = {
     "done" : 30,
     "overdone" : 60
 }
-REM_TIME = 15
-FLIP_MIN = 2
+
+REM_TIME = 7
+FLIP_MIN = 0.75
 
 
 #----------------UI code------------------------------------
@@ -264,6 +272,7 @@ class cv_cooktop(object):
                 a, b, r = pt[0], pt[1], pt[2] 
                 
                 chef.set_frame((frame.shape[1] , frame.shape[0])) #change this to a cook-cv class characteristic that gets passed in
+                #print(chef.frame_dims)
                 patty = chef.check_burgers(a,b,r)
                 if patty.name in missing_burgers.keys():
                     del(missing_burgers[patty.name])
@@ -272,6 +281,7 @@ class cv_cooktop(object):
                 #print(r)
         
                 cv2.circle(frame, patty.coords, patty.rad, patty.color, patty.line_weight) 
+                #print(patty.coords)
 
                 #draw pie chart timer
                 end_angle = ((TOT_TIME - patty.get_time_left()) / TOT_TIME)*360
@@ -584,7 +594,28 @@ class sous_chef(object):
 
         return
 
+    def ask_time_leap(self, x, y):
+  
+        # record the (x, y) coordinates
+        point = (x,y)
+        
+        #send audio to google speech API - #TODO and get actual question
 
+        #convert point to burger loc
+        bx,by = self.grid_loc(point[0], point[1])
+        print("screen", x, y)
+        print('burg', bx, by)
+        this_burger = self.get_burger(bx,by) 
+        if this_burger == None:
+            return
+    
+        this_burger.flash_thick()
+
+        #answer question about burger
+        time_left = this_burger.get_time_left()
+        self.speak.say_time_left(time_left , this_burger)
+
+        return
         
     
     def check_burgers(self , x , y, r):
@@ -620,6 +651,7 @@ class sous_chef(object):
         return
 
     def cook(self):
+        pinch_state = False
         while(self.is_cooking):
             #get circles
             detected_circles, frame = self.cooktop.get_circles()
@@ -632,12 +664,17 @@ class sous_chef(object):
                 #maybe handling overall missing burgers in other main method
             self.check_missing(missing_burgers) 
 
+            pinch_state, do_ask, hand_pos = self.do_leap_stuff(frame, pinch_state)
+
             self.cooktop.show_frame(frame)
 
             #check for questions and answer them
             cv2.setMouseCallback("main", self.ask_time_left)
+            
+            if do_ask:
+                self.ask_time_leap(hand_pos[0], hand_pos[1])
 
-            #TODO - check for hand over leap
+
 
             #check if stopped
             if cv2.waitKey(1) & 0xFF == ord('q'):
@@ -650,8 +687,53 @@ class sous_chef(object):
         return
               
 
-    def show_start(self):
-        pass
+    def do_leap_stuff(self, frame, been_pinched):
+        #LEAP stuff----------
+        #get hand loc
+        info = getLeapInfo()
+        hand = getLeapFrame().hands[0]
+
+
+        if hand.id != -1:
+            hand_x = hand.palm_pos[0]
+            hand_y = hand.palm_pos[1]
+
+            # status text
+            #status = 'service:{} connected:{} focus:{}  '.format(*[('NO ', 'YES')[x] for x in info])
+
+            #draw hand cursor
+            #x_pos = int(np.interp(hand_x, [-200, 200], [0, 1100]))
+            x_pos = int(np.interp(hand_x, [-120, 120], [0, 1100]))
+            #y_pos = int(np.interp(hand_y, [-200, 200], [800, 100]))
+            y_pos = int(np.interp(hand_y, [0, 200], [1100, 100]))
+
+            cv2.circle(frame, (x_pos , y_pos), 3, CURSOR_COLOR, 2) 
+            #print(self.frame_dims)
+            # print(status)
+            # print("hand = ", hand_x , hand_y)
+            # print("scaled = ", x_pos , y_pos)
+
+            #check pinch
+            #base on fingers ring and middle
+            #pointer = hand.fingers[1]
+            middle = hand.fingers[2]
+            ring = hand.fingers[3]
+            print(middle[2] , ring[2])
+
+            pinch = ring[2] > -50 and middle[2] > -50 #TODO - tune these params
+
+            if pinch:
+                #ask time left based on hand loc
+                cv2.circle(frame, (x_pos , y_pos), 3, (10, 225, 0), 2) 
+                was_pinched = True
+                if not been_pinched:
+                    do_ask = True
+                    return (was_pinched, do_ask, (x_pos , y_pos))
+                
+                return (was_pinched, False, (x_pos , y_pos))
+
+        #-------------------
+        return (False, False, (-1 , -1))
 
     def run(self):
         #start window
