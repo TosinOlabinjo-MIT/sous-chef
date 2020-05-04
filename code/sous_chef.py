@@ -68,8 +68,7 @@ CURSOR_COLOR = (255, 255, 255)
 # MED_COOK_TIME = 60
 # RARE_COOK_TIME = 45
 # WELL_COOK_TIME = 90
-TOT_COOK_TIMES = {"Rare" : 45 , "Med" : 60 , "Well" : 90}
-TOT_TIME = TOT_COOK_TIMES["Med"]
+
 
 COOK_TIMES = {
              "Rare":
@@ -119,19 +118,24 @@ COOK_TIMES = {
                 }
             }
 
+TOT_COOK_TIMES = {"Rare" : COOK_TIMES["Rare"]["pre-flip"]["flip"] + COOK_TIMES["Rare"]["post-flip"]["done"] , "Med" : COOK_TIMES["Med"]["pre-flip"]["flip"]  + COOK_TIMES["Med"]["post-flip"]["done"], "Well" : COOK_TIMES["Well"]["pre-flip"]["flip"] + COOK_TIMES["Well"]["post-flip"]["done"]}
+TOT_TIME = TOT_COOK_TIMES["Med"]
 
-DONE_TIMES = {
-    "new" : 0,
-    "flip" : 30 , 
-    "done" : float("inf"),
-    "overdone" : 60
-}
-DONE_TIMES_2 = {
-    "new" : 0,
-    "flip" : float("inf") , 
-    "done" : 30,
-    "overdone" : 60
-}
+TOT_FLIP_TIMES = {"Rare" : COOK_TIMES["Rare"]["pre-flip"]["flip"] , "Med" : COOK_TIMES["Med"]["pre-flip"]["flip"] , "Well" : COOK_TIMES["Well"]["pre-flip"]["flip"]}
+FLIP_TIME = TOT_FLIP_TIMES["Med"]
+
+# DONE_TIMES = {
+#     "new" : 0,
+#     "flip" : 30 , 
+#     "done" : float("inf"),
+#     "overdone" : 60
+# }
+# DONE_TIMES_2 = {
+#     "new" : 0,
+#     "flip" : float("inf") , 
+#     "done" : 30,
+#     "overdone" : 60
+# }
 
 REM_TIME = 7
 FLIP_MIN = 0.75
@@ -169,11 +173,13 @@ def open_window(button_pressed):
     #display card reader instructions
     elif button_pressed in ("Rare", "Med", "Well"):
         global TOT_TIME
+        global FLIP_TIME
         #set cooktimes based on button press #TODO
         print("Pressed", button_pressed)
         times = COOK_TIMES[button_pressed]
         TOT_TIME = TOT_COOK_TIMES[button_pressed]
-        print(times)
+        FLIP_TIME = TOT_FLIP_TIMES[button_pressed]
+        print(TOT_COOK_TIMES[button_pressed])
 
         sc = sous_chef(times)
         sc.run()
@@ -327,7 +333,46 @@ class speaker(object):
             "done": "This burger is done",
             "overdone" : "This burger is starting to overcook"
         }
+
+        self.flip_end = self.make_clip("seconds until this burger needs to be flipped. ", "flip_end")
+
+        self.done_end = self.make_clip("seconds until this burger is done.", "done_end")
         
+        self.flip_phrases = {}
+
+        self.done_phrases = {}
+
+        self.populate_phrases()
+
+
+    def populate_phrases(self):
+
+        for phrases in ("flip", "done"):
+            for mins in range(0,5): #TODO - adjust if there's another max
+                if phrases == "flip":
+                    self.flip_phrases[mins] = {}
+                else:
+                    self.done_phrases[mins] = {}
+                for secs in range(0,60):
+                    if phrases == "flip":
+                        #sentence
+                        resp = "{0} minutes and {1} seconds until this burger needs to be flipped. ".format(mins, secs)
+                        #make audio
+                        name = "{0}_{1}_flip-resp".format(mins, secs)
+                        #print(name)
+                        clip = self.make_clip(resp , name)
+                        #save in dict
+                        self.flip_phrases[mins][secs] = clip
+                    else: #phrases = done
+                        resp = "{0} minutes and {1} seconds until this burger is done.".format(mins, secs)
+                        #make audio
+                        name = "{0}_{1}_done-resp".format(mins, secs)
+                        #print(name)
+                        clip = self.make_clip(resp , name)
+                        #save in dict
+                        self.done_phrases[mins][secs] = clip
+        return
+                    
 
     def play_state(self, b_state, is_flipped):
         #check audio folder
@@ -360,6 +405,28 @@ class speaker(object):
         sd.play(data, fs)
         #status = sd.wait()  # Wait until file is done playing
         return
+
+    def make_clip(self, script, name):
+        #check audio folder
+        a_folder = os.getcwd() + "\\audio\\resp\\"
+        #a_folder = "C:/sous-chef/code/audio/states/"
+        if not os.path.exists(a_folder):
+            os.makedirs(a_folder)
+
+
+        #create audio file if it doensn't exist
+        filename = a_folder+ name
+        a_file = filename+".mp3"
+        a_wav = filename+".wav"
+        if not os.path.isfile(a_file):
+            sp_text = script
+            speech = gTTS(text = sp_text, lang = 'en', slow = False)
+            speech.save(a_file)
+            sound = AudioSegment.from_mp3(a_file)
+            sound.export(a_wav, format="wav")
+
+        return a_wav
+
     def say(self, script):
         #check audio folder
         a_folder = os.getcwd() + "\\audio\\resp\\"
@@ -389,21 +456,37 @@ class speaker(object):
     #TODO - need functions for done time answer & processing input speech
 
     def say_time_left(self, time_left , burger):
+
         tot_time = time_left
-        resp = ""
+        #resp = "" 
 
         if not burger.flipped:
             min_flip = int(time_left/60.0)
             sec_flip = int(time_left%60)
-            resp += "{0} minutes and {1} seconds until this burger needs to be flipped. ".format(min_flip, sec_flip)
-            tot_time = time_left + burger.time_after_flip
+            #resp += "{0} minutes and {1} seconds until this burger needs to be flipped. ".format(min_flip, sec_flip)
+            # resp += "{0} minutes and {1} ".format(min_flip, sec_flip)
+            # tot_time = time_left + burger.time_after_flip
+            # self.say(resp)
+            # time.sleep(1.8)
+            #play premade end
+            aud = self.flip_phrases[min_flip][sec_flip]
+            data, fs = sf.read(aud, dtype='float32')  
+            sd.play(data, fs)
+            
             
         else:
             min_left = int(tot_time/60.0)
             sec_left = int(tot_time%60)
-            resp += "{0} minutes and {1} seconds until this burger is done.".format(min_left, sec_left)
+            # #resp += "{0} minutes and {1} seconds until this burger is done.".format(min_left, sec_left)
+            # resp += "{0} minutes and {1} ".format(min_left, sec_left)
+            # self.say(resp)
+            # time.sleep(1.8)
+            # #play premade end
+            aud = self.done_phrases[min_left][sec_left]
+            data, fs = sf.read(aud, dtype='float32')  
+            sd.play(data, fs)
 
-        self.say(resp)
+        # self.say(resp)
         return
         
 
@@ -415,6 +498,7 @@ class burger(object):
         self.name = "burg-"+str(int(x/10))+"-"+str(int(y/10))
 
         self.time_to_cook = TOT_TIME #later adjust cooktimes based on size of patty
+        self.time_to_flip = FLIP_TIME
         self.time_after_flip = int(self.time_to_cook/2)
         self.start_time = time.time()
 
@@ -446,7 +530,14 @@ class burger(object):
     def get_time_left(self):
         time_cooked = time.time() - self.start_time
         #returns it in seconds
-        time_left = self.time_to_cook - time_cooked
+        time_left = self.time_to_cook - self.time_to_flip - time_cooked
+        #also return until done or until flip
+        return (time_left)
+
+    def get_time_flip(self):
+        time_cooked = time.time() - self.start_time
+        #returns it in seconds
+        time_left = self.time_to_flip - time_cooked
         #also return until done or until flip
         return (time_left)
 
@@ -539,6 +630,8 @@ class sous_chef(object):
         self.is_cooking = True
         self.cook_times = cook_times
 
+        
+
     
     def set_frame(self, coords):
         self.frame_dims = coords
@@ -589,7 +682,12 @@ class sous_chef(object):
             this_burger.flash_thick()
 
             #answer question about burger
-            time_left = this_burger.get_time_left()
+            time_left = -1
+            if this_burger.flipped:
+                time_left = this_burger.get_time_left()
+            else:
+                time_left = this_burger.get_time_flip()
+
             self.speak.say_time_left(time_left , this_burger)
 
         return
@@ -690,7 +788,7 @@ class sous_chef(object):
     def do_leap_stuff(self, frame, been_pinched):
         #LEAP stuff----------
         #get hand loc
-        info = getLeapInfo()
+        #info = getLeapInfo()
         hand = getLeapFrame().hands[0]
 
 
@@ -713,14 +811,16 @@ class sous_chef(object):
             # print("hand = ", hand_x , hand_y)
             # print("scaled = ", x_pos , y_pos)
 
-            #check pinch
+            #check pinch - actually just point toward screen
             #base on fingers ring and middle
-            #pointer = hand.fingers[1]
+            pointer = hand.fingers[1]
             middle = hand.fingers[2]
             ring = hand.fingers[3]
-            print(middle[2] , ring[2])
+            #print(middle[2] , ring[2])
+            print(pointer[2])
 
-            pinch = ring[2] > -50 and middle[2] > -50 #TODO - tune these params
+            #pinch = ring[2] > -50 and middle[2] > -50 #TODO - tune these params
+            pinch = pointer[2] < -120
 
             if pinch:
                 #ask time left based on hand loc
