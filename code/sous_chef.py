@@ -291,17 +291,29 @@ class cv_cooktop(object):
 
                 #draw pie chart timer
                 end_angle = ((TOT_TIME - patty.get_time_left()) / TOT_TIME)*360
+                timer_thick = 4
+                max_thick = 3
+                max_red = 255-77
+                timer_color = patty.color
                 
                 if not patty.flipped: end_angle -= 180
                 
                 if patty.cur_state == "done":
-                    #TODO have a - until overdone 
-                    pass
-                
-                if patty.cur_state == "overdone" : 
+                    #change thickness and timer color based on how long done
+                    done_time = time.time() - patty.done_time
+                    buff_time = chef.cook_times["post-flip"]["overdone"] - chef.cook_times["post-flip"]["done"]
+                    timer_thick = 4 + int((done_time/buff_time)*max_thick)
+                    g_val = 255 - int((done_time/buff_time)*max_red)//2
+                    r_val = 77 + (int((done_time/buff_time)*max_red)//5)*5
+                    timer_color = (timer_color[0], g_val , r_val )
+                    #print(timer_color)
+
+
+                if patty.cur_state == "overdone": 
                     end_angle = 360
+                    timer_thick = 7
                     
-                cv2.ellipse(frame, patty.coords, (7,7), -90, 0, end_angle, patty.color, thickness=3, lineType=8, shift=0) 
+                cv2.ellipse(frame, patty.coords, (7,7), -90, 0, end_angle, timer_color, thickness=timer_thick, lineType=8, shift=0) 
         
         return (frame , missing_burgers)
 
@@ -474,7 +486,7 @@ class speaker(object):
             sd.play(data, fs)
             
             
-        else:
+        elif not burger.cur_state in ("done", "overdone"):
             min_left = int(tot_time/60.0)
             sec_left = int(tot_time%60)
             # #resp += "{0} minutes and {1} seconds until this burger is done.".format(min_left, sec_left)
@@ -484,6 +496,11 @@ class speaker(object):
             # #play premade end
             aud = self.done_phrases[min_left][sec_left]
             data, fs = sf.read(aud, dtype='float32')  
+            sd.play(data, fs)
+
+        else:
+            clip = self.make_clip("You should remove this burger.", "overdone")
+            data, fs = sf.read(clip, dtype='float32')  
             sd.play(data, fs)
 
         # self.say(resp)
@@ -515,6 +532,7 @@ class burger(object):
         self.time_seen = time.time()
         self.flipped = False
         self.time_thick = time.time()
+        self.done_time = -1
 
     def check_gone(self, chef):
         gone_delt = time.time() - self.time_seen
@@ -528,6 +546,9 @@ class burger(object):
         return
 
     def get_time_left(self):
+        if self.cur_state in ("done" , "overdone"):
+            return 0
+
         time_cooked = time.time() - self.start_time
         #returns it in seconds
         time_left = self.time_to_cook - self.time_to_flip - time_cooked
@@ -535,6 +556,9 @@ class burger(object):
         return (time_left)
 
     def get_time_flip(self):
+        if self.cur_state == "flip":
+            return 0 
+
         time_cooked = time.time() - self.start_time
         #returns it in seconds
         time_left = self.time_to_flip - time_cooked
@@ -590,9 +614,13 @@ class burger(object):
                 self.cur_state = "done"
 
 
-        #update outline color
+        #update outline color - stuff on state change
         if self.cur_state != old_state:
             self.color = BURGER_COLOR[self.cur_state]
+
+            if self.cur_state == "done":
+                self.done_time = time.time()
+
             if self.cur_state != "new": 
                 self.time_thick = time.time()
                 self.line_weight = THICK_LINE
@@ -817,7 +845,7 @@ class sous_chef(object):
             middle = hand.fingers[2]
             ring = hand.fingers[3]
             #print(middle[2] , ring[2])
-            print(pointer[2])
+            #print(pointer[2])
 
             #pinch = ring[2] > -50 and middle[2] > -50 #TODO - tune these params
             pinch = pointer[2] < -120
