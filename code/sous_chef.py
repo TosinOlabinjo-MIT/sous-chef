@@ -292,7 +292,7 @@ class cv_cooktop(object):
                 #draw pie chart timer
                 end_angle = ((TOT_TIME - patty.get_time_left()) / TOT_TIME)*360
                 
-                if patty.flipped: end_angle += 180
+                if not patty.flipped: end_angle -= 180
                 
                 if patty.cur_state == "done":
                     #TODO have a - until overdone 
@@ -342,11 +342,11 @@ class speaker(object):
 
         self.done_phrases = {}
 
-        self.populate_phrases()
+        self.populate_phrases(do_run = True)
 
 
-    def populate_phrases(self):
-
+    def populate_phrases(self, do_run = False):
+        #has to run each time for dictionary - #TODO - make it a file that can be loaded
         for phrases in ("flip", "done"):
             for mins in range(0,5): #TODO - adjust if there's another max
                 if phrases == "flip":
