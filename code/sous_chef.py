@@ -38,7 +38,7 @@ import sys
 from pyleap_master.pyleap.leap import getLeapInfo, getLeapFrame
 
 
-GRID_W = 5
+GRID_W = 7
 GRID_H = 5
 SHIFT_LIMIT = 30
 
