@@ -38,16 +38,30 @@ import sys
 from pyleap_master.pyleap.leap import getLeapInfo, getLeapFrame
 
 
-GRID_W = 7
-GRID_H = 5
-SHIFT_LIMIT = 30
+#  burger sizes for circle detection
+#for coffee cup covers
+# PATTY_SIZE_MIN = 95
+# PATTY_SIZE_MAX = 115
+#for burgers
+PATTY_SIZE_MIN = 100
+PATTY_SIZE_MAX = 150
+# ! - ADJUST BASED ON YOUR PATTIES
 
+#ensures no overlapping burgers
+# GRID_W = 7
+# GRID_H = 5
+GRID_W = 4
+GRID_H = 4
+SHIFT_LIMIT = 30
 MIN_DIST = 300
 
+#drawing params
 BURGER_LINE = 2
 THICK_LINE = 5
 THICK_TIME = 2
 
+
+#burger states and times
 BURGER_STATES = ["new" , "flip" , "done" , "overdone"]
 
 BURGER_COLOR = { 
@@ -59,6 +73,7 @@ BURGER_COLOR = {
 
 }
 
+#for leap control
 CURSOR_COLOR = (255, 255, 255)
 
 #turn into dict for rare, medium, and well_done
@@ -69,9 +84,10 @@ CURSOR_COLOR = (255, 255, 255)
 # RARE_COOK_TIME = 45
 # WELL_COOK_TIME = 90
 
-
+# find good timings - limit tries so you dont waste food - use griddle,
+#! - PICK TIMES BASED ON YOUR PATTIES
 COOK_TIMES = {
-             "Rare":
+             "Rare": #values for testing / feature demonstartion - Change if you actually eat Rare burgers
                 {
                 "pre-flip":{ 
                     "new" : 0,
@@ -86,34 +102,34 @@ COOK_TIMES = {
                     "overdone" : 45
                             }
                 },
-            "Med":
+            "Med": #6 minutes on each side - for frozen
                 {
                 "pre-flip":{ 
                     "new" : 0,
-                    "flip" : 30 , 
+                    "flip" : 360 , 
                     "done" : float("inf"),
-                    "overdone" : 60
+                    "overdone" : 420
                             },
                 "post-flip":{
                     "new" : 0,
                     "flip" : float("inf") , 
-                    "done" : 30,
-                    "overdone" : 60
+                    "done" : 360,
+                    "overdone" : 420
                             }
                 },
-            "Well":
+            "Well": #8 minutes on each side - for frozen
                 {
                 "pre-flip":{ 
                     "new" : 0,
-                    "flip" : 45 , 
+                    "flip" : 480 , 
                     "done" : float("inf"),
-                    "overdone" : 90
+                    "overdone" : 540
                             },
                 "post-flip":{
                     "new" : 0,
                     "flip" : float("inf") , 
-                    "done" : 45,
-                    "overdone" : 90
+                    "done" : 480,
+                    "overdone" : 540
                             }
                 }
             }
@@ -137,8 +153,9 @@ FLIP_TIME = TOT_FLIP_TIMES["Med"]
 #     "overdone" : 60
 # }
 
+#time before burger is considered flipped or removed
 REM_TIME = 7
-FLIP_MIN = 0.75
+FLIP_MIN = 0.7
 
 
 #----------------UI code------------------------------------
@@ -179,7 +196,7 @@ def open_window(button_pressed):
         times = COOK_TIMES[button_pressed]
         TOT_TIME = TOT_COOK_TIMES[button_pressed]
         FLIP_TIME = TOT_FLIP_TIMES[button_pressed]
-        print(TOT_COOK_TIMES[button_pressed])
+        print(TOT_TIME , FLIP_TIME)
 
         sc = sous_chef(times)
         sc.run()
@@ -259,7 +276,7 @@ class cv_cooktop(object):
         # Apply Hough transform on the blurred image. 
         detected_circles = cv2.HoughCircles(gray_blurred,  
                         cv2.HOUGH_GRADIENT, 1, MIN_DIST, param1 = 50, 
-                    param2 = 30, minRadius = 95, maxRadius = 115) 
+                    param2 = 30, minRadius = PATTY_SIZE_MIN, maxRadius = PATTY_SIZE_MAX) 
 
         if detected_circles is None: 
             return ([], frame)
@@ -275,46 +292,47 @@ class cv_cooktop(object):
 
         if detected_circles != []:
             for pt in detected_circles[0, :]: 
-                a, b, r = pt[0], pt[1], pt[2] 
+                a, b, r = pt[0], pt[1], pt[2]
+                if a > 140 and a < 850: 
                 
-                chef.set_frame((frame.shape[1] , frame.shape[0])) #change this to a cook-cv class characteristic that gets passed in
-                #print(chef.frame_dims)
-                patty = chef.check_burgers(a,b,r)
-                if patty.name in missing_burgers.keys():
-                    del(missing_burgers[patty.name])
-                #print(patty.name , patty.cur_state, time.time())
-                #if(patty.flipped): print ("is_flipped")
-                #print(r)
-        
-                cv2.circle(frame, patty.coords, patty.rad, patty.color, patty.line_weight) 
-                #print(patty.coords)
+                    chef.set_frame((frame.shape[1] , frame.shape[0])) #change this to a cook-cv class characteristic that gets passed in
+                    #print(chef.frame_dims)
+                    patty = chef.check_burgers(a,b,r)
+                    if patty.name in missing_burgers.keys():
+                        del(missing_burgers[patty.name])
+                    #print(patty.name , patty.cur_state, time.time())
+                    #if(patty.flipped): print ("is_flipped")
+                    print(r)
+            
+                    cv2.circle(frame, patty.coords, patty.rad, patty.color, patty.line_weight) 
+                    #print(patty.coords)
 
-                #draw pie chart timer
-                end_angle = ((TOT_TIME - patty.get_time_left()) / TOT_TIME)*360
-                timer_thick = 4
-                max_thick = 3
-                max_red = 255-77
-                timer_color = patty.color
-                
-                if not patty.flipped: end_angle -= 180
-                
-                if patty.cur_state == "done":
-                    #change thickness and timer color based on how long done
-                    done_time = time.time() - patty.done_time
-                    buff_time = chef.cook_times["post-flip"]["overdone"] - chef.cook_times["post-flip"]["done"]
-                    timer_thick = 4 + int((done_time/buff_time)*max_thick)
-                    g_val = 255 - int((done_time/buff_time)*max_red)//2
-                    r_val = 77 + (int((done_time/buff_time)*max_red)//5)*5
-                    timer_color = (timer_color[0], g_val , r_val )
-                    #print(timer_color)
-
-
-                if patty.cur_state == "overdone": 
-                    end_angle = 360
-                    timer_thick = 7
+                    #draw pie chart timer
+                    end_angle = ((TOT_TIME - patty.get_time_left()) / TOT_TIME)*360
+                    timer_thick = 4
+                    max_thick = 3
+                    max_red = 255-77
+                    timer_color = patty.color
                     
-                cv2.ellipse(frame, patty.coords, (7,7), -90, 0, end_angle, timer_color, thickness=timer_thick, lineType=8, shift=0) 
-        
+                    if not patty.flipped: end_angle -= 180
+                    
+                    if patty.cur_state == "done":
+                        #change thickness and timer color based on how long done
+                        done_time = time.time() - patty.done_time
+                        buff_time = chef.cook_times["post-flip"]["overdone"] - chef.cook_times["post-flip"]["done"]
+                        timer_thick = 4 + int((done_time/buff_time)*max_thick)
+                        g_val = 255 - int((done_time/buff_time)*max_red)//2
+                        r_val = 77 + (int((done_time/buff_time)*max_red)//5)*5
+                        timer_color = (timer_color[0], g_val , r_val )
+                        #print(timer_color)
+
+
+                    if patty.cur_state == "overdone": 
+                        end_angle = 360
+                        timer_thick = 7
+                        
+                    cv2.ellipse(frame, patty.coords, (7,7), -90, 0, end_angle, timer_color, thickness=timer_thick, lineType=8, shift=0) 
+            
         return (frame , missing_burgers)
 
     def show_frame(self, frame):
@@ -360,7 +378,7 @@ class speaker(object):
     def populate_phrases(self, do_run = False):
         #has to run each time for dictionary - #TODO - make it a file that can be loaded
         for phrases in ("flip", "done"):
-            for mins in range(0,5): #TODO - adjust if there's another max
+            for mins in range(0,10): #TODO - adjust if there's another max
                 if phrases == "flip":
                     self.flip_phrases[mins] = {}
                 else:
@@ -591,7 +609,7 @@ class burger(object):
                     self.cur_state = state
 
 
-            #check if flipping #TODO - replace with color ? test!
+            #check if flipping
             if (self.cur_state == "flip" or self.cur_state == "overdone") and not self.flipped and self.delt_gone > FLIP_MIN:
                 #for now, pretend being flipped is "new" on the other side
                 self.flipped = True
@@ -738,7 +756,12 @@ class sous_chef(object):
         this_burger.flash_thick()
 
         #answer question about burger
-        time_left = this_burger.get_time_left()
+        time_left = -1
+        if this_burger.flipped:
+            time_left = this_burger.get_time_left()
+        else:
+            time_left = this_burger.get_time_flip()
+        #time_left = this_burger.get_time_left()
         self.speak.say_time_left(time_left , this_burger)
 
         return
