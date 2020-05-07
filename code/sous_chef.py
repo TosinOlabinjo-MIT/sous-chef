@@ -254,6 +254,8 @@ class cv_cooktop(object):
          # Capture frame-by-frame
         ret, frame = self.cap.read()
 
+        #if frame != None:
+
         #flip images
         frame = cv2.flip(frame , 1)
         frame = cv2.flip(frame , 0)
