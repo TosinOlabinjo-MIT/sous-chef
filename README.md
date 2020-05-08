@@ -23,7 +23,7 @@
 ## Software
 All necessary python packages are defined in requirements.txt
 
-Sous-chef was built using python version 3.7.
+Sous-chef was built using python version 3.7 on a Windows machine. I have note tested it on a Mac.
 
 # How to Install
 1. Download Sous-chef from github
