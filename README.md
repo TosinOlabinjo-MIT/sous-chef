@@ -22,6 +22,7 @@
 
 ## Software
 All necessary python packages are defined in requirements.txt
+
 Sous-chef was built using python version 3.7.
 
 # How to Install
@@ -49,9 +50,9 @@ To quit Sous-Chef press the 'q' key on your keyboard.
 # Troubleshooting
 Try the steps listed in order to solve the following common problems.
 ## Flickering burgers
- * nudge the patty under which the flickering is centerred
- * if the keep overlapping, increase the value of MIN_DIST in sous_chef.py
- * try adjusting the height of the camera above the cooking surface.
+ * Nudge the patty under which the flickering is centerred
+ * If the keep overlapping, increase the value of MIN_DIST in sous_chef.py
+ * Try adjusting the height of the camera above the cooking surface.
 ## Circles are stable but aren't on patties
  * Adjust the circle detection paramters in sous_chef.py: PATTY_SIZE_MIN and PATTY_SIZE_MAX
 ## Burgers are over/underdone
