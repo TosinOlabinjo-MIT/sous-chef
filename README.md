@@ -39,7 +39,7 @@ Sous-chef was built using python version 3.7 on a Windows machine. I have note t
 5. Run __python sous_chef.py__
 6. Click start
 7. Select your desired level of doneness
-8. Get cooking! - cook as you normally would while following Sous-chef's queues, it will automatically pick up every patty you add to the cooking surface
+8. Get cooking! - cook as you normally would while following Sous-chef's queues, it will automatically pick up every patty you add to the cooking surface. Try to keep each patty in the same place before and after you flip it.
 
 ## Burger Query
 To ask how long until a burger is done, wave your hand above the leap motion controller until you see the cursor show up on the screen. The cursor should look like a small white circle. Point to the burger you would like to ask about, move your hand in towards the screen until the cursor turns green. Once it turns green the system will answer your query about whichever burger is under the cursor. 
