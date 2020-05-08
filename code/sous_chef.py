@@ -3,7 +3,7 @@ Sous-chef :
 The cooking assistant that helps you learn how to know when you're food's done
 
 By: Tosin Olabinjo
-Last edited: 4/13/2020
+Last edited: 5/7/2020
 
 """
 import cv2
@@ -31,10 +31,8 @@ from playsound import playsound as ps
 from pydub import AudioSegment
 import os
 
-# credit:
 from time import sleep
 import sys
-#sys.path.insert(0, os.path.abspath('..'))
 from pyleap_master.pyleap.leap import getLeapInfo, getLeapFrame
 
 
@@ -54,6 +52,7 @@ GRID_W = 4
 GRID_H = 4
 SHIFT_LIMIT = 30
 MIN_DIST = 300
+# ADJUST - if you're experiencing flickering
 
 #drawing params
 BURGER_LINE = 2
@@ -70,19 +69,10 @@ BURGER_COLOR = {
     "done":(77, 255, 77),
     "overdone":(0 , 0, 255),
     "flipped":(200, 10, 100)
-
 }
 
 #for leap control
 CURSOR_COLOR = (255, 255, 255)
-
-#turn into dict for rare, medium, and well_done
-#check actual times after debugging
-
-#adjust times and time dictionaries later
-# MED_COOK_TIME = 60
-# RARE_COOK_TIME = 45
-# WELL_COOK_TIME = 90
 
 # find good timings - limit tries so you dont waste food - use griddle,
 #! - PICK TIMES BASED ON YOUR PATTIES
@@ -140,19 +130,6 @@ TOT_TIME = TOT_COOK_TIMES["Med"]
 TOT_FLIP_TIMES = {"Rare" : COOK_TIMES["Rare"]["pre-flip"]["flip"] , "Med" : COOK_TIMES["Med"]["pre-flip"]["flip"] , "Well" : COOK_TIMES["Well"]["pre-flip"]["flip"]}
 FLIP_TIME = TOT_FLIP_TIMES["Med"]
 
-# DONE_TIMES = {
-#     "new" : 0,
-#     "flip" : 30 , 
-#     "done" : float("inf"),
-#     "overdone" : 60
-# }
-# DONE_TIMES_2 = {
-#     "new" : 0,
-#     "flip" : float("inf") , 
-#     "done" : 30,
-#     "overdone" : 60
-# }
-
 #time before burger is considered flipped or removed
 REM_TIME = 7
 FLIP_MIN = 0.7
@@ -160,34 +137,24 @@ FLIP_MIN = 0.7
 
 #----------------UI code------------------------------------
 def callback(instance):
-    #instance.disabled = True
     val = instance.value
-    #print(val)
-
+ 
     #open the correct window
     open_window(val)
 
-    #do only for buttons with commmands? TODO
-    #send the command
-    #send_command(val)
-    
-    #play correct audio
-    #play_audio(val)
-    
-    #instance.disabled = False
     
     return
 
 def open_window(button_pressed):
     #open the appropiate window
     
-    #bring up doneness selction #TODO
+    #bring up doneness selction
     if button_pressed == "Start":	
         cd_popup = ChooseDone()
         cd_popup.open()
         
         
-    #display card reader instructions
+    #set the desired doneness
     elif button_pressed in ("Rare", "Med", "Well"):
         global TOT_TIME
         global FLIP_TIME
@@ -203,7 +170,7 @@ def open_window(button_pressed):
         
     
     else:
-        #display wait msg
+        #handle buttons used as graphics
         pass
     
     return
@@ -211,8 +178,7 @@ def open_window(button_pressed):
 
 class StartWind(Widget):
     pass
-    # def build(self):
-    #     print("idk")
+
 
 class ChooseDone(Popup):
     def __init__(self, **kwargs):
@@ -252,9 +218,7 @@ class cv_cooktop(object):
         
     def get_circles(self):
          # Capture frame-by-frame
-        ret, frame = self.cap.read()
-
-        #if frame != None:
+        _, frame = self.cap.read()
 
         #flip images
         frame = cv2.flip(frame , 1)
@@ -302,14 +266,15 @@ class cv_cooktop(object):
                     patty = chef.check_burgers(a,b,r)
                     if patty.name in missing_burgers.keys():
                         del(missing_burgers[patty.name])
+                    #some prints for debugging
                     #print(patty.name , patty.cur_state, time.time())
                     #if(patty.flipped): print ("is_flipped")
-                    print(r)
+                    #print(r)
             
                     cv2.circle(frame, patty.coords, patty.rad, patty.color, patty.line_weight) 
                     #print(patty.coords)
 
-                    #draw pie chart timer
+                    #set up little circle timer
                     end_angle = ((TOT_TIME - patty.get_time_left()) / TOT_TIME)*360
                     timer_thick = 4
                     max_thick = 3
@@ -326,27 +291,25 @@ class cv_cooktop(object):
                         g_val = 255 - int((done_time/buff_time)*max_red)//2
                         r_val = 77 + (int((done_time/buff_time)*max_red)//5)*5
                         timer_color = (timer_color[0], g_val , r_val )
-                        #print(timer_color)
 
 
                     if patty.cur_state == "overdone": 
                         end_angle = 360
                         timer_thick = 7
-                        
+                    
+                    #draw timer
                     cv2.ellipse(frame, patty.coords, (7,7), -90, 0, end_angle, timer_color, thickness=timer_thick, lineType=8, shift=0) 
             
         return (frame , missing_burgers)
 
     def show_frame(self, frame):
                
-        #apply any other transofrmations on the frame     
+        #apply any other transofrmations on the frame here   
 
         # Display the resulting frame
         cv2.imshow("main", frame)
         
         #cv2.imshow('blurred img' , gray_blurred)
-        # if cv2.waitKey(1) & 0xFF == ord('q'):
-        #     break
         return frame
 
 
@@ -378,9 +341,9 @@ class speaker(object):
 
 
     def populate_phrases(self, do_run = False):
-        #has to run each time for dictionary - #TODO - make it a file that can be loaded
+        # has to run to populate dictionary
         for phrases in ("flip", "done"):
-            for mins in range(0,10): #TODO - adjust if there's another max
+            for mins in range(0,10): #! - adjust if there's another max
                 if phrases == "flip":
                     self.flip_phrases[mins] = {}
                 else:
@@ -413,8 +376,6 @@ class speaker(object):
         if not os.path.exists(a_folder):
             os.makedirs(a_folder)
 
-
-
         #create audio file if it doensn't exist
         filename = a_folder+b_state
         if is_flipped: filename += "-flip"
@@ -430,9 +391,7 @@ class speaker(object):
         #play audio  
         if b_state == "overdone":
             winsound.Beep(400,500)  
-        #os.system(a_wav)
-        #ps(a_wav)
-        #winsound.PlaySound(a_wav, winsound.SND_FILENAME)
+
         data, fs = sf.read(a_wav, dtype='float32')  
         sd.play(data, fs)
         #status = sd.wait()  # Wait until file is done playing
@@ -466,7 +425,6 @@ class speaker(object):
         if not os.path.exists(a_folder):
             os.makedirs(a_folder)
 
-
         #create audio file if it doensn't exist
         filename = a_folder+"resp" #TODO - change this
         a_file = filename+".mp3"
@@ -478,14 +436,11 @@ class speaker(object):
         sound = AudioSegment.from_mp3(a_file)
         sound.export(a_wav, format="wav")
 
-
         #play audio
         data, fs = sf.read(a_wav, dtype='float32')  
         sd.play(data, fs)
 
         return
-
-    #TODO - need functions for done time answer & processing input speech
 
     def say_time_left(self, time_left , burger):
 
@@ -495,12 +450,6 @@ class speaker(object):
         if not burger.flipped:
             min_flip = int(time_left/60.0)
             sec_flip = int(time_left%60)
-            #resp += "{0} minutes and {1} seconds until this burger needs to be flipped. ".format(min_flip, sec_flip)
-            # resp += "{0} minutes and {1} ".format(min_flip, sec_flip)
-            # tot_time = time_left + burger.time_after_flip
-            # self.say(resp)
-            # time.sleep(1.8)
-            #play premade end
             aud = self.flip_phrases[min_flip][sec_flip]
             data, fs = sf.read(aud, dtype='float32')  
             sd.play(data, fs)
@@ -509,11 +458,6 @@ class speaker(object):
         elif not burger.cur_state in ("done", "overdone"):
             min_left = int(tot_time/60.0)
             sec_left = int(tot_time%60)
-            # #resp += "{0} minutes and {1} seconds until this burger is done.".format(min_left, sec_left)
-            # resp += "{0} minutes and {1} ".format(min_left, sec_left)
-            # self.say(resp)
-            # time.sleep(1.8)
-            # #play premade end
             aud = self.done_phrases[min_left][sec_left]
             data, fs = sf.read(aud, dtype='float32')  
             sd.play(data, fs)
@@ -527,11 +471,10 @@ class speaker(object):
         return
         
 
-
 class burger(object):
     '''class that defines burger patty and methods to check it'''
     def __init__(self, x , y , rad):
-        #find way to unique name burgers based on location
+        #unique name burgers based on location
         self.name = "burg-"+str(int(x/10))+"-"+str(int(y/10))
 
         self.time_to_cook = TOT_TIME #later adjust cooktimes based on size of patty
@@ -539,14 +482,11 @@ class burger(object):
         self.time_after_flip = int(self.time_to_cook/2)
         self.start_time = time.time()
 
-        #patty.coords, patty.rad, patty.color, patty.line_weight) 
         self.coords = (x, y)
         self.rad = rad
         self.cur_state = "new"
         self.color = BURGER_COLOR[self.cur_state]
         self.line_weight = BURGER_LINE
-
-        #self.do_update = True
 
         self.delt_gone = 0
         self.time_seen = time.time()
@@ -572,7 +512,6 @@ class burger(object):
         time_cooked = time.time() - self.start_time
         #returns it in seconds
         time_left = self.time_to_cook - self.time_to_flip - time_cooked
-        #also return until done or until flip
         return (time_left)
 
     def get_time_flip(self):
@@ -582,7 +521,6 @@ class burger(object):
         time_cooked = time.time() - self.start_time
         #returns it in seconds
         time_left = self.time_to_flip - time_cooked
-        #also return until done or until flip
         return (time_left)
 
 
@@ -610,10 +548,9 @@ class burger(object):
                 if time_delt >= cook_times["pre-flip"][state]:
                     self.cur_state = state
 
-
             #check if flipping
             if (self.cur_state == "flip" or self.cur_state == "overdone") and not self.flipped and self.delt_gone > FLIP_MIN:
-                #for now, pretend being flipped is "new" on the other side
+                #treat being flipped as "new" on the other side
                 self.flipped = True
                 self.cur_state = "new"
                 self.color = BURGER_COLOR["flipped"]
@@ -647,7 +584,7 @@ class burger(object):
 
                 #play state change audio
                 speaker.play_state(self.cur_state, self.flipped)
-            #self.do_update = True
+          
      
         return
 
@@ -664,13 +601,10 @@ class sous_chef(object):
     '''
     def __init__(self , cook_times = COOK_TIMES["Med"]):
         self.running = True
-        #self.cur_window = None #later start with start, for now go straight to cooking 
-        #self.burgers = [[None]*GRID_W]*GRID_H
         self.burgers = [ [ None for i in range(GRID_W) ] for j in range(GRID_H) ]
         #print(self.burgers)
         self.all_burgers = {}
-        #self.missing_burgers = {}
-        #self.camera_feed
+  
         self.frame_dims = (-1,-1) #w,h
         self.speak = speaker()
 
@@ -678,9 +612,6 @@ class sous_chef(object):
         self.is_cooking = True
         self.cook_times = cook_times
 
-        
-
-    
     def set_frame(self, coords):
         self.frame_dims = coords
 
@@ -694,30 +625,16 @@ class sous_chef(object):
 
     
     def get_burger(self,x,y):
-    
+        #opencv has weird coordinates 
         this_burger = self.burgers[y][x]
-
-        #switch x and y?
         return this_burger
 
     
     def ask_time_left(self, event, x, y , flags, param):
-        # if the left mouse button was clicked, record the
-        # (x, y) coordinates
-        # performed
-        # if event == cv2.EVENT_LBUTTONDOWN:
-        #     point = (x, y)
-        #     #get recording
-        
-        # check to see if the left mouse button was released
-        # elif event == cv2.EVENT_LBUTTONUP:
-        #replace this to be leap motion based #TODO
         if event == cv2.EVENT_LBUTTONUP:
             # record the (x, y) coordinates
             point = (x,y)
             
-            #send audio to google speech API - #TODO and get actual question
-
             #convert point to burger loc
             bx,by = self.grid_loc(point[0], point[1])
             print("screen", x, y)
@@ -726,7 +643,7 @@ class sous_chef(object):
             if this_burger == None:
                 return
            
-            #TODO - highlight burger outline?
+            #highlight burger outline
             this_burger.flash_thick()
 
             #answer question about burger
@@ -741,12 +658,9 @@ class sous_chef(object):
         return
 
     def ask_time_leap(self, x, y):
-  
         # record the (x, y) coordinates
         point = (x,y)
         
-        #send audio to google speech API - #TODO and get actual question
-
         #convert point to burger loc
         bx,by = self.grid_loc(point[0], point[1])
         print("screen", x, y)
@@ -754,7 +668,8 @@ class sous_chef(object):
         this_burger = self.get_burger(bx,by) 
         if this_burger == None:
             return
-    
+
+        #highlight outline
         this_burger.flash_thick()
 
         #answer question about burger
@@ -771,12 +686,11 @@ class sous_chef(object):
     
     def check_burgers(self , x , y, r):
         new_patty = burger(x , y, r)
-
         x_b, y_b = self.grid_loc(x,y)
         #print("screen", x,y)
         #print("burger" , x_b, y_b)
-        #check if brand new, new location of old, or just old
 
+        #check if brand new, new location of old, or just old
         if self.burgers[y_b][x_b] == None:
             
             self.burgers[y_b][x_b] = new_patty
@@ -808,24 +722,23 @@ class sous_chef(object):
             detected_circles, frame = self.cooktop.get_circles()
             missing_burgers = {}
 
-            #check through circles and update
-            #if detected_circles != []:
+            #check through circles and update burgers
             frame, missing_burgers = self.cooktop.circ_to_burg(self, detected_circles , frame )
                 #check through chef's burgers to see if any burgers in his list weren't detected
-                #maybe handling overall missing burgers in other main method
             self.check_missing(missing_burgers) 
 
+            #check on hand + leap
             pinch_state, do_ask, hand_pos = self.do_leap_stuff(frame, pinch_state)
 
+            #show web cam footage
             self.cooktop.show_frame(frame)
 
-            #check for questions and answer them
+            #check for questions from mouse clicks and answer them
             cv2.setMouseCallback("main", self.ask_time_left)
             
+            #ask about time if pointed at
             if do_ask:
                 self.ask_time_leap(hand_pos[0], hand_pos[1])
-
-
 
             #check if stopped
             if cv2.waitKey(1) & 0xFF == ord('q'):
@@ -843,7 +756,6 @@ class sous_chef(object):
         #get hand loc
         #info = getLeapInfo()
         hand = getLeapFrame().hands[0]
-
 
         if hand.id != -1:
             hand_x = hand.palm_pos[0]
@@ -867,9 +779,6 @@ class sous_chef(object):
             #check pinch - actually just point toward screen
             #base on fingers ring and middle
             pointer = hand.fingers[1]
-            middle = hand.fingers[2]
-            ring = hand.fingers[3]
-            #print(middle[2] , ring[2])
             #print(pointer[2])
 
             #pinch = ring[2] > -50 and middle[2] > -50 #TODO - tune these params
@@ -899,19 +808,16 @@ class sous_chef(object):
 
 
 
-
-
 def main():
-
+    #begins with start menu
     SousApp().run()
 
+    #use if just running openCV side
     #sc = sous_chef()
     #sc.run()
-
     # #close window after running stops
     # cv2.destroyAllWindows()
     
-
     return
 
 if __name__ == "__main__":
