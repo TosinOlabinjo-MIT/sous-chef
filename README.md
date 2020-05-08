@@ -49,7 +49,7 @@ To quit Sous-Chef press the 'q' key on your keyboard.
 
 # Troubleshooting
 Try the steps listed in order to solve the following common problems.
-## Flickering burgers
+## Flickering circles
  * Nudge the patty under which the flickering is centerred
  * If the keep overlapping, increase the value of MIN_DIST in sous_chef.py
  * Try adjusting the height of the camera above the cooking surface.
