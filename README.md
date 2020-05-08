@@ -1,6 +1,8 @@
 # Sous-Chef
 **Sous-chef: The digital cooking assistant**
 
+[Final Presentation Video](https://youtu.be/cTHWWE7bAkg)
+
 # Contents
 * README - this file
 * code
@@ -54,4 +56,3 @@ Try the steps listed in order to solve the following common problems.
  * Adjust the circle detection paramters in sous_chef.py: PATTY_SIZE_MIN and PATTY_SIZE_MAX
 ## Burgers are over/underdone
  * In sous_chef.py, adjust the values in the dictionary COOK_TIMES according to the patties you are using. Take into account temperature, patty thickness, frozen/thawed patties, etc.
-
