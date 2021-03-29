@@ -22,7 +22,7 @@ opencv-python==4.2.0.34
 playsound==1.2.2
 pycparser==2.20
 pydub==0.23.1
-Pygments==2.6.1
+Pygments==2.7.4
 pypiwin32==223
 pywin32==227
 requests==2.23.0
